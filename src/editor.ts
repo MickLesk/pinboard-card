@@ -6,6 +6,7 @@ import {
   IMAGE_FITS,
   LAYOUTS,
   NOTE_STYLES,
+  NOTE_ENTITY_DOMAINS,
   MEDIA_EXPIRES_SECONDS,
   MEDIA_SOURCE_PREFIX,
   SIDES,
@@ -40,9 +41,20 @@ const PAGE_KEYS: Array<keyof PageConfig> = [
   "expires", "color", "text_color", "markers", "audio", "audio_entity", "visible", "tap_action", "hold_action", "double_tap_action",
 ];
 type EntryKind = "image" | "note" | "audio" | "both";
+type TemplateKind = "shopping" | "family" | "maintenance";
 const LIST_KEYS = ["slides", "images"];
 
 const TEMPLATE = `
+<details class="section templates" data-section="templates">
+  <summary class="templates-label"></summary>
+  <div class="section-body">
+    <p class="picture-help templates-help"></p>
+    <label class="template-field"><span class="template-type-label"></span><select class="template-type"></select></label>
+    <label class="template-field template-entity-field"><span class="template-entity-label"></span><select class="template-entity"></select></label>
+    <div class="status template-status" role="status"></div>
+    <button class="btn primary apply-template" type="button"></button>
+  </div>
+</details>
 <div class="pages">
   <div class="pages-label"></div>
   <div class="pages-help"></div>
@@ -55,6 +67,10 @@ const TEMPLATE = `
     <button class="btn remove-page" type="button"><ha-icon icon="mdi:delete-outline"></ha-icon><span></span></button>
   </div>
 </div>
+<aside class="setup-guidance hidden" aria-live="polite">
+  <strong class="setup-label"></strong>
+  <ul class="setup-messages"></ul>
+</aside>
 <details class="section picture" data-section="picture">
   <summary class="picture-label"></summary>
   <div class="section-body">
@@ -130,6 +146,45 @@ const TEMPLATE = `
 const STYLES = `
 .pages {
   margin-bottom: 16px;
+}
+.template-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
+.template-field select {
+  font: inherit;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--divider-color);
+  border-radius: 8px;
+  color: var(--primary-text-color);
+  background: var(--card-background-color);
+}
+.template-field select:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+.template-entity-field.hidden,
+.setup-guidance.hidden {
+  display: none;
+}
+.setup-guidance {
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border-left: 3px solid var(--primary-color);
+  background: var(--secondary-background-color);
+  border-radius: 8px;
+  font-size: 0.85em;
+  line-height: 1.5;
+}
+.setup-messages {
+  padding-left: 18px;
+  margin: 6px 0 0;
+}
+.setup-messages li + li {
+  margin-top: 6px;
 }
 .pages-label,
 .picture-label {
@@ -576,6 +631,8 @@ export class PinboardCardEditor extends HTMLElement {
   private _importing = false;
   private _recorder?: MediaRecorder;
   private _recordTimer?: number;
+  private _templateKind: TemplateKind = "shopping";
+  private _templateEntity = "";
 
   constructor() {
     super();
@@ -600,6 +657,8 @@ export class PinboardCardEditor extends HTMLElement {
     if (langChanged) {
       this._render();
     } else {
+      this._renderTemplates();
+      this._renderSetupGuidance();
       this._updatePreview();
     }
   }
@@ -666,6 +725,110 @@ export class PinboardCardEditor extends HTMLElement {
     pages.push(kind === "image" ? {} : { kind });
     this._pageIndex = pages.length - 1;
     this._emit(this._withPages(this._config ?? { type: "" }, pages));
+  }
+
+  private _renderTemplates(): void {
+    const type = this._root.querySelector<HTMLSelectElement>(".template-type");
+    const entity = this._root.querySelector<HTMLSelectElement>(".template-entity");
+    const button = this._root.querySelector<HTMLButtonElement>(".apply-template");
+    const status = this._root.querySelector<HTMLElement>(".template-status");
+    if (!type || !entity || !button || !status) return;
+    const t = (key: string) => translate(this._lang, key);
+    type.replaceChildren();
+    for (const kind of ["shopping", "family", "maintenance"] as const) {
+      type.add(new Option(t(`editor_template_${kind}`), kind));
+    }
+    type.value = this._templateKind;
+    const domains = this._templateKind === "shopping" ? ["todo"] : NOTE_ENTITY_DOMAINS;
+    const entities = Object.keys(this._hass?.states ?? {}).filter((id) => domains.includes(id.split(".")[0])).sort();
+    entity.replaceChildren(new Option(t("editor_template_choose"), ""));
+    for (const id of entities) {
+      const name = this._hass?.states[id].attributes.friendly_name;
+      entity.add(new Option(typeof name === "string" ? `${name} (${id})` : id, id));
+    }
+    if (!entities.includes(this._templateEntity)) this._templateEntity = "";
+    entity.value = this._templateEntity;
+    const needsEntity = this._templateKind !== "maintenance";
+    this._root.querySelector(".template-entity-field")?.classList.toggle("hidden", !needsEntity);
+    const full = this._slideCount(this._pages()) >= MAX_SLIDES;
+    button.disabled = full || (needsEntity && !this._templateEntity);
+    button.textContent = t("editor_template_add");
+    status.textContent = full ? t("editor_max_slides")
+      : needsEntity && entities.length === 0 ? t(this._templateKind === "shopping" ? "editor_template_missing_todo" : "editor_template_missing_text")
+        : needsEntity && !this._templateEntity ? t("editor_template_choose") : "";
+  }
+
+  private _applyTemplate(): void {
+    const status = this._root.querySelector<HTMLElement>(".template-status");
+    const t = (key: string) => translate(this._lang, key);
+    const pages = this._pages().map((page) => ({ ...page }));
+    if (this._slideCount(pages) >= MAX_SLIDES) {
+      if (status) status.textContent = t("editor_max_slides");
+      return;
+    }
+    const domains = this._templateKind === "shopping" ? ["todo"] : NOTE_ENTITY_DOMAINS;
+    if (this._templateKind !== "maintenance" &&
+        (!this._hass?.states[this._templateEntity] || !domains.includes(this._templateEntity.split(".")[0]))) {
+      if (status) status.textContent = t("editor_template_choose");
+      return;
+    }
+    const title = t(`editor_template_${this._templateKind}`);
+    const page: PageConfig = this._templateKind === "shopping"
+      ? { title, todo_entity: this._templateEntity, color: "yellow" }
+      : this._templateKind === "family"
+        ? { title, note_entity: this._templateEntity, color: "blue" }
+        : { title, note: t("editor_template_maintenance_note"), color: "green" };
+    if (pages.length === 1 && Object.values(pages[0]).every((value) => value === undefined || value === null || value === "")) {
+      pages[0] = page;
+    } else {
+      pages.push(page);
+    }
+    this._pageIndex = pages.length - 1;
+    const config = this._withPages(this._config ?? { type: `custom:${CARD_TYPE}` }, pages);
+    // Page fields share these keys with card-wide actions.
+    for (const key of ["tap_action", "hold_action", "double_tap_action"] as const) {
+      if (this._config?.[key]) config[key] = this._config[key];
+    }
+    this._emit(config);
+  }
+
+  private _renderSetupGuidance(): void {
+    const container = this._root.querySelector<HTMLElement>(".setup-guidance");
+    const list = this._root.querySelector<HTMLElement>(".setup-messages");
+    if (!container || !list) return;
+    const t = (key: string, vars?: Record<string, string | number>) => translate(this._lang, key, vars);
+    const page = this._page();
+    const messages: string[] = [];
+    if (this._hass) {
+      for (const key of ["image_entity", "note_entity", "todo_entity", "audio_entity"] as const) {
+        const id = page[key];
+        if (!id) continue;
+        const entity = this._hass.states[id];
+        if (!entity) messages.push(t("editor_setup_missing", { entity: id }));
+        else if (entity.state === "unknown" || entity.state === "unavailable") messages.push(t("editor_setup_unavailable", { entity: id }));
+      }
+    }
+    if (!page.todo_entity) {
+      if (page.note_entity) {
+        const writable = !page.note_attribute && NOTE_ENTITY_DOMAINS.includes(page.note_entity.split(".")[0]);
+        if (!writable) messages.push(t("editor_setup_readonly"));
+        const entity = this._hass?.states[page.note_entity];
+        if (page.note_attribute && entity && !(page.note_attribute in entity.attributes)) {
+          messages.push(t("editor_setup_attribute", { attribute: page.note_attribute, entity: page.note_entity }));
+        }
+        const max = entity?.attributes.max;
+        if (writable && typeof max === "number") messages.push(t("editor_setup_length", { count: max }));
+      } else if (this._config?.checklist !== false && /(^|\n)\s*[-*+]\s+\[[ xX]\]/.test(page.note ?? "")) {
+        messages.push(t("editor_setup_checklist"));
+      }
+    }
+    list.replaceChildren();
+    for (const message of messages) {
+      const item = document.createElement("li");
+      item.textContent = message;
+      list.append(item);
+    }
+    container.classList.toggle("hidden", messages.length === 0);
   }
 
   private _removePage(): void {
@@ -962,13 +1125,25 @@ export class PinboardCardEditor extends HTMLElement {
     this._preview = q<HTMLElement>(".preview");
     this._previewImg = q<HTMLImageElement>(".preview img");
     this._fileInput = q<HTMLInputElement>(".file");
-    this._status = q<HTMLElement>(".status");
+    this._status = q<HTMLElement>(".picture-actions .status");
     this._clearButton = q<HTMLButtonElement>(".clear");
     this._uploadButton = q<HTMLButtonElement>(".upload");
     this._removePageButton = q<HTMLButtonElement>(".remove-page");
     this._moveLeftButton = q<HTMLButtonElement>(".move-left");
     this._moveRightButton = q<HTMLButtonElement>(".move-right");
     this._canvasImg = q<HTMLImageElement>(".marker-canvas img");
+    this._root.querySelector<HTMLSelectElement>(".template-type")?.addEventListener("change", (event) => {
+      const value = (event.currentTarget as HTMLSelectElement).value;
+      if (value !== "shopping" && value !== "family" && value !== "maintenance") return;
+      this._templateKind = value;
+      this._templateEntity = "";
+      this._renderTemplates();
+    });
+    this._root.querySelector<HTMLSelectElement>(".template-entity")?.addEventListener("change", (event) => {
+      this._templateEntity = (event.currentTarget as HTMLSelectElement).value;
+      this._renderTemplates();
+    });
+    this._root.querySelector<HTMLButtonElement>(".apply-template")?.addEventListener("click", () => this._applyTemplate());
     this._root.querySelector<HTMLElement>(".marker-canvas")?.addEventListener("click", (ev) => this._onCanvasClick(ev));
     this._root.querySelector<HTMLButtonElement>(".import")?.addEventListener("click", () => void this._importFolder());
     this._root.querySelector<HTMLInputElement>(".import-folder")?.addEventListener("keydown", (ev) => {
@@ -1037,9 +1212,16 @@ export class PinboardCardEditor extends HTMLElement {
       if (el) el.textContent = text;
     };
     setText(".pages-label", t("editor_pages"));
+    setText(".templates-label", t("editor_templates"));
+    setText(".templates-help", t("editor_templates_help"));
+    setText(".template-type-label", t("editor_template_type"));
+    setText(".template-entity-label", t("editor_template_entity"));
+    setText(".setup-label", t("editor_setup"));
+    this._renderTemplates();
+    this._renderSetupGuidance();
     setText(".pages-help", t("editor_pages_help"));
     setText(".picture-label", t("editor_section_picture"));
-    setText(".picture-help", t("editor_image_help"));
+    setText(".picture-actions .picture-help", t("editor_image_help"));
     setText(".note-label", t("editor_note_editor"));
     setText(".note-help", t("editor_note_editor_help"));
     setText(".import-label", t("editor_import"));
@@ -1140,6 +1322,7 @@ export class PinboardCardEditor extends HTMLElement {
     this._renderAudioEditor(showAudio);
     this._renderNoteBlock(showNote);
     this._applySectionState({
+      templates: false,
       picture: true,
       markers: Array.isArray(currentPage.markers) && currentPage.markers.length > 0,
       note: currentKind !== "image",

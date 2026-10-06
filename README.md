@@ -5,6 +5,21 @@
   Tap it and it turns to the next page. A Home Assistant card, installable through HACS.
 </p>
 
+<p align="center">
+  <a href="https://github.com/MickLesk/pinboard-card/releases/latest"><img src="https://img.shields.io/github/v/release/MickLesk/pinboard-card" alt="Latest release"></a>
+  <a href="https://github.com/MickLesk/pinboard-card/actions/workflows/validate.yml"><img src="https://github.com/MickLesk/pinboard-card/actions/workflows/validate.yml/badge.svg" alt="Validation status"></a>
+  <a href="#installation"><img src="https://img.shields.io/badge/HACS-custom_repository-41BDF5" alt="HACS custom repository"></a>
+  <a href="https://github.com/MickLesk/pinboard-card/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MickLesk/pinboard-card" alt="MIT license"></a>
+</p>
+
+<p align="center">
+  <a href="https://micklesk.github.io/pinboard-card/demo/"><strong>Live demo</strong></a>
+  &middot; <a href="#installation">Installation</a>
+  &middot; <a href="#quick-start">Quick start</a>
+  &middot; <a href="#examples">Examples</a>
+  &middot; <a href="CHANGELOG.md">Changelog</a>
+</p>
+
 Pinboard is the pinboard in the hallway, as a card: the fridge with the
 shopping list on its back, the boiler with its last service date, a plant with
 its watering schedule, a family photo with a voice memo. The simplest card is a
@@ -20,6 +35,11 @@ can hold up to ten pictures, notes and recordings in any order.
 
 ## Features
 
+- **Starter templates (1.1.0)** — add a shopping list, an editable family
+  note or a maintenance note from the visual editor. Select your own
+  entities; existing pages and card settings stay in place.
+- **Setup tips (1.1.0)** — the editor explains missing or unavailable
+  entities, read-only notes, missing note attributes and text length limits.
 - **Upload a picture from the editor** — stored by Home Assistant, no `www`
   folder needed. URLs, `/local/` paths, `media-source://` ids and `image`,
   `camera` or `person` entities work too.
@@ -59,11 +79,18 @@ can hold up to ten pictures, notes and recordings in any order.
 - **Visual editor** for every option, grouped into sections. UI in English,
   German, Dutch, French and Spanish. Keyboard access throughout.
 - **Try it first**: the [demo page](https://micklesk.github.io/pinboard-card/demo/)
-  shows every feature with stand-ins for Home Assistant.
+  has six everyday examples and an interactive editor with simulated Home
+  Assistant data. Technical examples are in a separate, collapsible section.
 
 ## Installation
 
+Requires **Home Assistant 2024.10 or newer**. Pinboard is a dashboard card,
+not a backend integration. HACS is optional.
+
 ### HACS
+
+[Open this repository in HACS](https://my.home-assistant.io/redirect/hacs_repository/?owner=MickLesk&repository=pinboard-card&category=plugin),
+or add it manually:
 
 1. Open HACS, three-dot menu, **Custom repositories**.
 2. Add `https://github.com/MickLesk/pinboard-card`, category **Dashboard**.
@@ -74,16 +101,25 @@ add `/hacsfiles/pinboard-card/pinboard-card.js` as a *JavaScript module*.
 
 ### Manual
 
-Copy `dist/pinboard-card.js` to `/config/www/pinboard-card.js` and add
+Download **`pinboard-card.js`** from the
+[latest release](https://github.com/MickLesk/pinboard-card/releases/latest),
+copy it to `/config/www/pinboard-card.js` and add
 `/local/pinboard-card.js` under **Settings → Dashboards → Resources** as a
 *JavaScript module*.
 
-Requires Home Assistant 2024.10 or newer.
+Use the built JavaScript file, not the release's source-code archive. Reload
+the browser after installation or an update.
 
 ## Quick start
 
 Add the card from the card picker (**Pinboard Card**) and use the visual
-editor, or paste YAML. The smallest useful card is a picture with a note on
+editor, or paste YAML. From version 1.1.0, open **Start with a template** to
+add a shopping list, family note or maintenance note. Shared lists and
+editable notes use an existing entity; the editor tells you how to create
+one if none is available. Templates add a page, not a replacement for your
+card. See [Templates and setup tips](docs/editor.md#templates).
+
+The smallest useful card is a picture with a note on
 its back:
 
 ```yaml
@@ -93,6 +129,69 @@ image: /local/pictures/boiler.jpg
 note: |
   **Last service:** 12 Oct 2025
   Next filter change in six months.
+```
+
+## Examples
+
+Replace the example entity IDs with entities from your own Home Assistant.
+Pictures can be uploaded in the visual editor instead of using `/local/`
+paths.
+
+### A shared shopping list
+
+Use an existing Home Assistant to-do list. Everyone sees the same items,
+whether they use this card, another dashboard or the built-in To-do view.
+
+```yaml
+type: custom:pinboard-card
+title: Shopping
+todo_entity: todo.shopping_list
+note: "For the next grocery run:"
+note_style: sticky
+color: yellow
+```
+
+### An editable household note
+
+Create a Text helper under **Settings → Devices & services → Helpers** and
+use its entity ID. The pencil on the card edits the helper's value; no
+dashboard editing is needed.
+
+```yaml
+type: custom:pinboard-card
+title: Message for the family
+note_entity: input_text.family_note
+note_style: sticky
+color: blue
+```
+
+Text helpers hold at most 255 characters, and their configured maximum may
+be lower. For longer notes, use the details of items in a to-do list.
+
+### A family pinboard
+
+Show a photo with a note on its back, a shared task list and a separate
+Markdown note as tiles in one card.
+
+```yaml
+type: custom:pinboard-card
+title: Family pinboard
+layout: grid
+columns: 2
+note_style: sticky
+slides:
+  - image: /local/pictures/family.jpg
+    title: This week
+    note_entity: input_text.family_note
+    color: yellow
+  - todo_entity: todo.family_tasks
+    title: Things to do
+    color: green
+  - note: |
+      ## Before leaving
+      Keys, lunch and a water bottle.
+    title: By the front door
+    color: blue
 ```
 
 ## Full configuration
@@ -302,14 +401,28 @@ runs.
 | [Styling and sizing](docs/styling.md) | CSS variables, sections and masonry views, small cards |
 | [Contributing](CONTRIBUTING.md) | Repository layout, branches, pull requests, releases |
 
-## Ideas for later
+## Troubleshooting
 
-- A companion integration that keeps notes with their history, author and
-  timestamp and offers services for automations.
-- Actions on a note page: mark done, snooze, open a task.
-- Reading notes aloud through Assist.
-- A QR code that opens the card on a phone.
+- **"Custom element doesn't exist: pinboard-card"**: check that the
+  JavaScript module resource is registered and its URL loads. Reload the
+  browser; after an update, a hard refresh may be needed to clear a cached
+  bundle. Avoid registering both the manual and HACS resource.
+- **Checkboxes cannot be changed**: checklists written directly in card YAML
+  are read-only. Use `todo_entity` for a shared task list, or `note_entity`
+  pointing to an `input_text` / `text` entity for a writable Markdown
+  checklist.
+- **A note has no edit button**: editing requires an `input_text` or `text`
+  entity. Notes read from an attribute via `note_attribute` are read-only.
+- **Voice recording does not start**: allow microphone access and open Home
+  Assistant in a secure browser context, normally HTTPS. Browser support and
+  permissions also matter; uploading an audio file in the editor is an
+  alternative.
+
+For a bug report, use the
+[issue templates](https://github.com/MickLesk/pinboard-card/issues/new/choose)
+and include your card YAML, card version, Home Assistant version and browser.
+Remove private URLs and other sensitive information before posting.
 
 ## License
 
-MIT
+[MIT](LICENSE)

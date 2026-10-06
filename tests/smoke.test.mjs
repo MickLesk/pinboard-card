@@ -19,13 +19,21 @@ after(async () => {
   server?.close();
 });
 
-async function openDemo(options = {}) {
+async function openDemo({ technical = true, ...options } = {}) {
   const context = await browser.newContext({ viewport: { width: 1180, height: 1400 }, ...options });
   const page = await context.newPage();
   const errors = [];
+  const failedResources = [];
   page.on("pageerror", (err) => errors.push(err.message));
+  page.on("response", (response) => {
+    if (response.status() >= 400) failedResources.push(response.url());
+  });
   await page.goto(`${baseUrl}demo/`, { waitUntil: "networkidle" });
-  return { page, context, errors };
+  if (technical) {
+    await page.locator("#technical-tests").evaluate((element) => { element.open = true; });
+    await page.locator("#grid > .cell").last().waitFor();
+  }
+  return { page, context, errors, failedResources };
 }
 
 const card = (page, index) => page.locator("#grid > .cell > pinboard-card").nth(index);
@@ -201,7 +209,7 @@ test("the editor adds and removes pictures", async () => {
   await editor.locator(".chip.add-image").click();
   let latest = await page.evaluate(() => window.__configs.at(-1));
   assert.equal(latest.slides.length, 2);
-  assert.equal(latest.slides[0].image, "./garden.jpg");
+  assert.equal(latest.slides[0].image, "./kitchen.jpg");
   assert.equal(latest.slides[0].note_entity, "input_text.fridge_note");
   assert.equal(latest.image, undefined);
   assert.equal(latest.title, "Fridge");
@@ -210,7 +218,7 @@ test("the editor adds and removes pictures", async () => {
   await editor.locator(".remove-page").click();
   latest = await page.evaluate(() => window.__configs.at(-1));
   assert.equal(latest.slides, undefined);
-  assert.equal(latest.image, "./garden.jpg");
+  assert.equal(latest.image, "./kitchen.jpg");
   assert.equal(latest.note_entity, "input_text.fridge_note");
   configs.push(latest);
   await context.close();
@@ -256,7 +264,7 @@ test("the editor reorders pictures", async () => {
   const latest = await page.evaluate(() => window.__configs.at(-1));
   assert.equal(latest.slides.length, 2);
   assert.equal(latest.slides[0].kind, "note");
-  assert.equal(latest.slides[1].image, "./garden.jpg");
+  assert.equal(latest.slides[1].image, "./kitchen.jpg");
   assert.equal(await editor.locator(".chip.active").innerText(), "1 · Note");
   assert.equal(await editor.locator(".move-left").isVisible(), false);
   assert.equal(await editor.locator(".move-right").isVisible(), true);
@@ -415,7 +423,7 @@ test("the editor imports pictures from a media folder, reorders by drag and drop
   await chips.nth(2).dragTo(chips.nth(0));
   latest = await page.evaluate(() => window.__configs.at(-1));
   assert.equal(latest.slides[0].image, "media-source://media_source/local/holiday/b.png");
-  assert.equal(latest.slides[1].image, "./garden.jpg");
+  assert.equal(latest.slides[1].image, "./kitchen.jpg");
 
   // The preview card follows the config and plays the animation.
   const preview = editor.locator(".preview-card pinboard-card");
@@ -710,5 +718,230 @@ test("the editor emits config-changed", async () => {
   assert.equal(config.image, undefined);
   assert.equal(config.title, "Fridge");
   assert.equal(config.type, "custom:pinboard-card");
+  await context.close();
+});
+
+test("the public demo separates the showcase from technical fixtures", async () => {
+  const { page, context, errors, failedResources } = await openDemo({ technical: false });
+  assert.equal(await page.locator("#showcase > .cell > pinboard-card").count(), 6);
+  assert.equal(await page.locator("#technical-tests").getAttribute("open"), null);
+  assert.equal(await page.locator("#grid").isVisible(), false);
+  assert.equal(await page.locator("ha-form pre").count(), 0);
+  assert.equal(await page.locator("pinboard-card-editor .page-form input[data-field=image]").count(), 1);
+  assert.equal(await page.locator("#grid > .cell").count(), 0);
+  assert.deepEqual(failedResources, []);
+  await page.locator("#theme").click();
+  assert.equal(await page.locator("#theme").getAttribute("aria-pressed"), "true");
+  await page.locator("#technical-tests > summary").click();
+  await page.locator("#grid > .cell").last().waitFor();
+  assert.equal(await page.locator("#grid").isVisible(), true);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("the demo is responsive without horizontal overflow", async () => {
+  for (const width of [375, 768, 1440]) {
+    const { page, context } = await openDemo({ technical: false, viewport: { width, height: 1000 } });
+    const checkLayout = async () => {
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, `overflow at ${width}px`);
+      const boxes = await page.locator("#showcase > .cell").evaluateAll((cells) => cells.map((cell) => {
+        const rect = cell.getBoundingClientRect();
+        return { width: rect.width, bottom: rect.bottom, cardBottom: cell.querySelector("pinboard-card").getBoundingClientRect().bottom };
+      }));
+      assert.ok(boxes.every((box) => box.width >= 280), `showcase cards too narrow at ${width}px`);
+      assert.ok(boxes.every((box) => box.cardBottom <= box.bottom), `card overflows its showcase tile at ${width}px`);
+    };
+    await checkLayout();
+    await page.locator("#technical-tests").evaluate((element) => { element.open = true; });
+    await checkLayout();
+    await context.close();
+  }
+});
+
+test("demo form controls update the card and live preview instead of dumping JSON", async () => {
+  const { page, context } = await openDemo({ technical: false });
+  const editor = page.locator("pinboard-card-editor");
+  const title = editor.locator(".card-form input[data-field=title]");
+  await title.fill("My household");
+  await title.press("Tab");
+  await page.waitForFunction(() => JSON.parse(document.querySelector("#config-output").textContent).title === "My household");
+  assert.equal(await page.locator("#playground-preview pinboard-card .face.current .title-overlay").innerText(), "My household");
+  assert.equal(await editor.locator(".card-form pre").count(), 0);
+  const layout = editor.locator(".card-form select[data-field=layout]");
+  await layout.selectOption("grid");
+  await page.waitForFunction(() => JSON.parse(document.querySelector("#config-output").textContent).layout === "grid");
+  await context.close();
+});
+
+test("demo form styling reaches shadow DOM and separates labels, controls and help text", async () => {
+  for (const width of [375, 768, 1440]) {
+    const { page, context } = await openDemo({ technical: false, viewport: { width, height: 1000 } });
+    const editor = page.locator("pinboard-card-editor");
+    const input = editor.locator(".page-form input[data-field=image]");
+    const layout = await input.evaluate((control) => {
+      const field = control.closest("label");
+      const label = field.querySelector("span").getBoundingClientRect();
+      const helper = field.querySelector("small").getBoundingClientRect();
+      const rect = control.getBoundingClientRect();
+      const fieldStyle = getComputedStyle(field);
+      const controlStyle = getComputedStyle(control);
+      return {
+        hasOwnShadowRoot: control.getRootNode().host.localName === "ha-form",
+        display: fieldStyle.display,
+        direction: fieldStyle.flexDirection,
+        height: rect.height,
+        width: rect.width,
+        fieldWidth: field.getBoundingClientRect().width,
+        labelGap: rect.top - label.bottom,
+        helperGap: helper.top - rect.bottom,
+        padding: parseFloat(controlStyle.paddingLeft),
+        radius: parseFloat(controlStyle.borderRadius),
+        background: controlStyle.backgroundColor,
+      };
+    });
+    assert.equal(layout.hasOwnShadowRoot, true);
+    assert.equal(layout.display, "flex");
+    assert.equal(layout.direction, "column");
+    assert.ok(layout.height >= 42, `input too short at ${width}px`);
+    assert.ok(Math.abs(layout.width - layout.fieldWidth) <= 1, `input not full-width at ${width}px`);
+    assert.ok(layout.labelGap >= 5, `label overlaps input at ${width}px`);
+    assert.ok(layout.helperGap >= 5, `helper overlaps input at ${width}px`);
+    assert.ok(layout.padding >= 10);
+    assert.ok(layout.radius >= 8);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+    const gridDisplay = await editor.locator(".card-form .demo-form-grid").first().evaluate((element) => getComputedStyle(element).display);
+    assert.equal(gridDisplay, "grid");
+    const toggleDisplay = await editor.locator(".card-form .demo-toggle").first().evaluate((element) => getComputedStyle(element).display);
+    assert.equal(toggleDisplay, "grid");
+    await page.locator("#theme").click();
+    assert.notEqual(await input.evaluate((control) => getComputedStyle(control).backgroundColor), layout.background);
+    assert.equal(await editor.locator(".page-form").evaluate((form) => getComputedStyle(form).colorScheme), "dark");
+    await context.close();
+  }
+});
+
+test("editor templates select real entities and preserve existing content and settings", async () => {
+  const { page, context } = await openDemo();
+  const editor = page.locator("pinboard-card-editor");
+  await page.evaluate(() => {
+    const editor = document.querySelector("pinboard-card-editor");
+    editor.setConfig({
+      type: "custom:pinboard-card", title: "Existing", image: "./kitchen.jpg", note: "Keep this", transition: "fade",
+      tap_action: { action: "flip" },
+      hold_action: { action: "more-info", entity: "sensor.boiler_temp" },
+      double_tap_action: { action: "url", url_path: "https://example.com" },
+    });
+    window.__configs = [];
+    editor.addEventListener("config-changed", (event) => window.__configs.push(event.detail.config));
+  });
+  await editor.locator(".templates > summary").click();
+  assert.match(await editor.locator(".templates-help").innerText(), /without replacing existing content/);
+  assert.match(await editor.locator(".picture-actions .picture-help").innerText(), /Upload a picture/);
+  assert.equal(await editor.locator(".apply-template").isDisabled(), true);
+  assert.deepEqual(await editor.locator(".template-entity option").evaluateAll((options) => options.map((option) => option.value)), ["", "todo.shopping"]);
+  await editor.locator(".template-entity").selectOption("todo.shopping");
+  await editor.locator(".apply-template").click();
+  let config = await page.evaluate(() => window.__configs.at(-1));
+  assert.equal(config.transition, "fade");
+  assert.equal(config.title, "Existing");
+  assert.deepEqual(config.tap_action, { action: "flip" });
+  assert.deepEqual(config.hold_action, { action: "more-info", entity: "sensor.boiler_temp" });
+  assert.deepEqual(config.double_tap_action, { action: "url", url_path: "https://example.com" });
+  assert.deepEqual(config.slides[0], { image: "./kitchen.jpg", note: "Keep this" });
+  assert.deepEqual(config.slides[1], { title: "Shopping list", todo_entity: "todo.shopping", color: "yellow" });
+  await editor.locator(".template-type").selectOption("family");
+  assert.equal(await editor.locator(".template-entity option[value='todo.shopping']").count(), 0);
+  await editor.locator(".template-entity").selectOption("input_text.fridge_note");
+  await editor.locator(".apply-template").click();
+  config = await page.evaluate(() => window.__configs.at(-1));
+  assert.equal(config.slides[2].note_entity, "input_text.fridge_note");
+  assert.match(await editor.locator(".setup-guidance").innerText(), /255 characters/);
+  await editor.locator(".template-type").selectOption("maintenance");
+  assert.equal(await editor.locator(".template-entity-field").isVisible(), false);
+  await editor.locator(".apply-template").click();
+  config = await page.evaluate(() => window.__configs.at(-1));
+  assert.equal(config.slides.length, 4);
+  assert.match(config.slides[3].note, /Last service/);
+  assert.equal(config.slides[3].color, "green");
+  assert.equal(await editor.locator(".note-preview h2").innerText(), "Maintenance");
+  await context.close();
+});
+
+test("templates handle empty cards, missing entities and the expanded page limit", async () => {
+  const { page, context } = await openDemo();
+  const editor = page.locator("pinboard-card-editor");
+  await page.evaluate(() => {
+    const editor = document.querySelector("pinboard-card-editor");
+    editor.setConfig({ type: "custom:pinboard-card" });
+    window.__configs = [];
+    editor.addEventListener("config-changed", (event) => window.__configs.push(event.detail.config));
+    editor.hass = { ...editor.hass, states: {} };
+  });
+  await editor.locator(".templates > summary").click();
+  assert.match(await editor.locator(".template-status").innerText(), /No to-do list found/);
+  assert.equal(await editor.locator(".apply-template").isDisabled(), true);
+  await editor.locator(".template-type").selectOption("family");
+  assert.match(await editor.locator(".template-status").innerText(), /Create a Text helper/);
+  await editor.locator(".template-type").selectOption("maintenance");
+  await editor.locator(".apply-template").click();
+  let config = await page.evaluate(() => window.__configs.at(-1));
+  assert.equal(config.slides, undefined);
+  assert.match(config.note, /Last service/);
+  await page.evaluate(() => {
+    document.querySelector("pinboard-card-editor").setConfig({
+      type: "custom:pinboard-card",
+      slides: Array.from({ length: 5 }, () => ({ image: "./kitchen.jpg", note: "Two pages" })),
+    });
+  });
+  assert.equal(await editor.locator(".apply-template").isDisabled(), true);
+  assert.match(await editor.locator(".template-status").innerText(), /10/);
+  assert.equal(await page.evaluate(() => window.__configs.length), 1);
+  await context.close();
+});
+
+test("setup guidance explains missing entities, attributes and read-only notes and updates with hass", async () => {
+  const { page, context } = await openDemo();
+  const editor = page.locator("pinboard-card-editor");
+  await page.evaluate(() => document.querySelector("pinboard-card-editor").setConfig({ type: "custom:pinboard-card", note_entity: "input_text.new_note" }));
+  assert.match(await editor.locator(".setup-guidance").innerText(), /input_text.new_note was not found/);
+  await page.evaluate(() => {
+    const editor = document.querySelector("pinboard-card-editor");
+    editor.hass = { ...editor.hass, states: { ...editor.hass.states, "input_text.new_note": { state: "Hello", attributes: {} } } };
+  });
+  assert.equal(await editor.locator(".setup-guidance").isVisible(), false);
+  await page.evaluate(() => document.querySelector("pinboard-card-editor").setConfig({ type: "custom:pinboard-card", note_entity: "sensor.boiler_temp", note_attribute: "missing" }));
+  assert.match(await editor.locator(".setup-guidance").innerText(), /read-only/);
+  assert.match(await editor.locator(".setup-guidance").innerText(), /Attribute missing was not found/);
+  await page.evaluate(() => document.querySelector("pinboard-card-editor").setConfig({ type: "custom:pinboard-card", note: "- [ ] Unsaved checkbox" }));
+  assert.match(await editor.locator(".setup-guidance").innerText(), /Checkboxes in YAML notes are read-only/);
+  await page.evaluate(() => document.querySelector("pinboard-card-editor").setConfig({ type: "custom:pinboard-card", note: "- [ ] Unsaved checkbox", checklist: false }));
+  assert.equal(await editor.locator(".setup-guidance").isVisible(), false);
+  await context.close();
+});
+
+test("templates and setup guidance are localized in every supported language", async () => {
+  const { page, context } = await openDemo();
+  const labels = await page.evaluate(() => {
+    const editor = document.querySelector("pinboard-card-editor");
+    const result = {};
+    editor.setConfig({ type: "custom:pinboard-card", note_entity: "input_text.missing" });
+    for (const language of ["en", "de", "nl", "fr", "es"]) {
+      editor.hass = { ...editor.hass, language, locale: { language } };
+      result[language] = {
+        label: editor.shadowRoot.querySelector(".templates-label").textContent,
+        guidance: editor.shadowRoot.querySelector(".setup-messages").textContent,
+      };
+    }
+    return result;
+  });
+  assert.equal(labels.en.label, "Start with a template");
+  assert.equal(labels.de.label, "Mit einer Vorlage starten");
+  assert.equal(labels.nl.label, "Begin met een sjabloon");
+  assert.equal(labels.fr.label, "Commencer avec un modèle");
+  assert.equal(labels.es.label, "Empezar con una plantilla");
+  for (const value of Object.values(labels)) {
+    assert.match(value.guidance, /input_text\.missing/);
+    assert.doesNotMatch(value.guidance, /editor_setup_/);
+  }
   await context.close();
 });

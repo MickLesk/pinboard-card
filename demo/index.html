@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Pinboard Card – demo</title>
+  <title>Pinboard - interactive Home Assistant card demo</title>
+  <meta name="description" content="Try Pinboard: photos, editable notes, shared lists and voice memos on your Home Assistant dashboard." />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%2303a9f4'/%3E%3Cpath d='M10 8h12v16H10z' fill='white'/%3E%3C/svg%3E" />
   <style>
     :root {
       --primary-color: #03a9f4;
@@ -21,6 +23,7 @@
       --mdc-icon-size: 24px;
     }
     body.dark {
+      --demo-color-scheme: dark;
       --primary-text-color: #e1e1e1;
       --rgb-primary-text-color: 225, 225, 225;
       --secondary-text-color: #9b9b9b;
@@ -33,48 +36,141 @@
     }
     body {
       margin: 0;
-      padding: 24px;
+      padding: 0;
       font-family: Roboto, "Segoe UI", system-ui, sans-serif;
-      background: #fafafa;
+      background: #f5f7fa;
       color: var(--primary-text-color);
     }
-    h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
-    p.lead { margin: 0 0 20px; color: var(--secondary-text-color); }
-    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1100px; }
-    .cell h2 { font-size: 13px; font-weight: 500; margin: 0 0 8px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .06em; }
-    .toolbar { margin-bottom: 20px; display: flex; gap: 12px; }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    .shell { max-width: 1240px; padding: 28px 32px 48px; margin: auto; }
+    .site-nav { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--divider-color); }
+    .brand { font-size: 22px; font-weight: 750; letter-spacing: -.04em; }
+    a { color: var(--primary-color); text-underline-offset: 4px; }
+    .nav-links, .toolbar, .hero-links { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+    .nav-links a { color: var(--secondary-text-color); font-size: 14px; }
+    .hero { padding: 36px 0 28px; max-width: 860px; }
+    .eyebrow { color: var(--primary-color); font-size: 12px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 14px; }
+    h1 { font-size: clamp(34px, 5vw, 54px); line-height: 1.05; letter-spacing: -.05em; margin: 0 0 20px; }
+    p.lead { font-size: 19px; line-height: 1.65; max-width: 690px; color: var(--secondary-text-color); margin: 0 0 24px; }
+    .hero-links a { padding: 10px 16px; border-radius: 10px; border: 1px solid var(--divider-color); font-weight: 600; text-decoration: none; }
+    .hero-links a.primary { color: white; background: #007da8; border-color: #007da8; }
+    .demo-notice { padding: 16px 20px; border: 1px solid var(--divider-color); border-radius: 12px; background: var(--card-background-color); line-height: 1.6; color: var(--secondary-text-color); margin-bottom: 24px; }
+    .demo-notice strong { color: var(--primary-text-color); }
+    .toolbar { justify-content: space-between; margin-bottom: 28px; }
+    .toolbar-controls { display: flex; flex-wrap: wrap; gap: 10px; }
+    .toolbar p { margin: 0; color: var(--secondary-text-color); font-size: 14px; }
+    .section-heading { margin: 44px 0 24px; }
+    .section-heading h2 { font-size: 28px; letter-spacing: -.025em; margin: 0 0 8px; }
+    .section-heading p, .cell p { color: var(--secondary-text-color); line-height: 1.6; margin: 8px 0 0; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 28px; align-items: start; }
+    .cell { min-width: 0; }
+    .cell h2, .cell h3 { font-size: 16px; font-weight: 650; margin: 0 0 12px; line-height: 1.4; }
+    .cell pinboard-card { display: block; }
+    .showcase-cell { background: var(--card-background-color); padding: 20px; border: 1px solid var(--divider-color); border-radius: 18px; }
+    .showcase-cell p { font-size: 14px; min-height: 44px; }
     button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: inherit; cursor: pointer; }
+    button:focus-visible, a:focus-visible, summary:focus-visible, input:focus-visible, select:focus-visible { outline: 3px solid var(--primary-color); outline-offset: 3px; }
     ha-card { display: block; background: var(--ha-card-background); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
-    #editor { max-width: 520px; margin-top: 32px; padding: 16px; border-radius: 12px; background: var(--card-background-color); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
-    #editor h2 { font-size: 14px; margin: 0 0 12px; }
-    ha-form { display: block; }
-    ha-form pre { font-size: 12px; background: var(--secondary-background-color); padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+    .playground { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 28px; align-items: start; }
+    #editor, .config-panel { min-width: 0; padding: 24px; border: 1px solid var(--divider-color); border-radius: 18px; background: var(--card-background-color); }
+    .config-panel { position: sticky; top: 24px; }
+    .config-panel h3 { margin-top: 0; }
+    .config-panel p { color: var(--secondary-text-color); line-height: 1.6; }
+    .config-panel pre { font-size: 12px; max-height: 420px; overflow: auto; padding: 16px; background: var(--secondary-background-color); border-radius: 10px; }
+    .config-panel pinboard-card { display: block; margin-bottom: 20px; }
+    #technical-tests { margin-top: 48px; border: 1px solid var(--divider-color); border-radius: 16px; padding: 24px; }
+    #technical-tests > summary { font-size: 18px; font-weight: 650; cursor: pointer; }
+    #technical-tests > p { color: var(--secondary-text-color); line-height: 1.6; margin: 16px 0 24px; }
+    #sections { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+    #sections .host { max-width: 100%; }
+    footer { margin-top: 40px; color: var(--secondary-text-color); font-size: 13px; line-height: 1.6; }
+    @media (max-width: 700px) {
+      .shell { padding: 20px 16px 32px; }
+      .site-nav { align-items: flex-start; flex-direction: column; gap: 14px; }
+      .hero { padding-top: 36px; }
+      .toolbar { align-items: flex-start; gap: 16px; }
+      .playground { grid-template-columns: minmax(0, 1fr); }
+      .config-panel { position: static; }
+      #editor, .config-panel, #technical-tests { padding: 16px; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
   </style>
 </head>
 <body>
-  <h1>Pinboard Card – demo</h1>
-  <p class="lead">Local preview with minimal Home Assistant stubs. Tap a card to flip it.</p>
+  <main class="shell">
+  <nav class="site-nav" aria-label="Main navigation">
+    <span class="brand">Pinboard<span style="color:var(--primary-color)">.</span></span>
+    <div class="nav-links">
+      <a href="#showcase">Examples</a>
+      <a href="#playground">Try the editor</a>
+      <a href="https://github.com/MickLesk/pinboard-card">GitHub &amp; documentation</a>
+    </div>
+  </nav>
+  <header class="hero">
+    <p class="eyebrow">Made for Home Assistant</p>
+    <h1>Your home has stories.<br>Give them a pinboard.</h1>
+    <p class="lead">Photos on the front. Notes, shared lists and voice memos behind them.
+      One card for the little things that keep your household running.</p>
+    <div class="hero-links">
+      <a class="primary" href="https://my.home-assistant.io/redirect/hacs_repository/?owner=MickLesk&amp;repository=pinboard-card&amp;category=plugin">Install with HACS</a>
+      <a href="#playground">Try it below</a>
+      <a href="https://github.com/MickLesk/pinboard-card/releases/latest">Latest release</a>
+    </div>
+  </header>
+  <aside class="demo-notice"><strong>A real card, with pretend Home Assistant data.</strong>
+    Edit notes and tick off tasks freely: changes stay in this page and reset on reload.
+    The editor controls are a simulation, not the full Home Assistant UI. Audio playback
+    uses a silent sample; uploads and recording do not persist files.</aside>
   <div class="toolbar">
-    <button id="theme">Toggle dark theme</button>
-    <button id="lang">Toggle language (en/de)</button>
-    <button id="flipall">Flip all</button>
+    <p>Tap a photo to turn it over. Try the pencil or tick a task.</p>
+    <div class="toolbar-controls">
+      <button id="theme" aria-pressed="false">Dark theme</button>
+      <button id="lang">Card language: English / Deutsch</button>
+      <button id="flipall">Turn all pages</button>
+    </div>
   </div>
-  <div class="grid" id="grid"></div>
-
-  <h2 style="font-size:13px;font-weight:500;margin:28px 0 8px;color:var(--secondary-text-color);text-transform:uppercase;letter-spacing:.06em">Sections view: fixed-height hosts (2 rows = 120px, 3 columns ≈ 245px)</h2>
+  <section aria-labelledby="showcase-title">
+    <div class="section-heading">
+      <h2 id="showcase-title">Small cards. Useful everyday things.</h2>
+      <p>Six ways to use Pinboard, without building a dashboard from scratch.</p>
+    </div>
+    <div class="grid" id="showcase"></div>
+  </section>
+  <section id="playground" aria-labelledby="playground-title">
+    <div class="section-heading">
+      <h2 id="playground-title">Make it yours.</h2>
+      <p>Start with a template, pick a demo entity and adjust the card. The preview updates as you go.</p>
+    </div>
+    <div class="playground">
+      <div id="editor"><pinboard-card-editor></pinboard-card-editor></div>
+      <aside class="config-panel">
+        <h3>Your live preview</h3>
+        <div id="playground-preview"></div>
+        <p>These are demo entities. In Home Assistant, select your own helpers and to-do lists.</p>
+        <details><summary>View card configuration (JSON)</summary><pre id="config-output"></pre></details>
+      </aside>
+    </div>
+  </section>
+  <details id="technical-tests">
+    <summary>Technical examples &amp; edge cases</summary>
+    <p>Animation variants, intentionally missing entities and fixed-height layouts.
+      These are regression fixtures, not suggested dashboard designs.</p>
+    <div class="grid" id="grid"></div>
+  <h3>Sections view: fixed-height cards</h3>
   <div id="sections" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
     <div class="host" style="height:120px;width:245px"></div>
     <div class="host" style="height:120px;width:245px"></div>
     <div class="host" style="height:232px;width:520px"></div>
     <div class="host" style="height:232px;width:400px"></div>
   </div>
-
-  <div id="editor">
-    <h2>Editor element (ha-form is stubbed as a JSON dump)</h2>
-    <pinboard-card-editor></pinboard-card-editor>
-  </div>
+  </details>
+  <footer>Pinboard is an MIT-licensed custom dashboard card. Requires Home Assistant 2024.10 or newer.
+    <a href="https://github.com/MickLesk/pinboard-card/issues/new/choose">Report a bug or suggest a feature</a>.</footer>
+  </main>
 
   <script type="module">
+    import "./form.js";
     // ---- Minimal stand-ins for Home Assistant elements -------------------------
     const ICONS = {
       "mdi:note-text-outline": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6m4 18H6V4h7v5h5v11M8 12h8v2H8v-2m0 4h8v2H8v-2Z",
@@ -127,24 +223,14 @@
         const html = esc(this._c ?? "")
           .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
           .replace(/\*(.+?)\*/g, "<em>$1</em>")
-          .split(/\n{2,}/).map((p) => p.startsWith("- ")
-            ? "<ul>" + p.split("\n").map((l) => `<li>${l.replace(/^- /, "")}</li>`).join("") + "</ul>"
-            : `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+          .split(/\n{2,}/).map((p) => {
+            const heading = /^(#{1,3}) (.+)$/.exec(p);
+            if (heading) return `<h${heading[1].length}>${heading[2]}</h${heading[1].length}>`;
+            return p.startsWith("- ")
+              ? "<ul>" + p.split("\n").map((l) => `<li>${l.replace(/^- /, "")}</li>`).join("") + "</ul>"
+              : `<p>${p.replace(/\n/g, "<br>")}</p>`;
+          }).join("");
         this.innerHTML = html;
-      }
-    });
-    customElements.define("ha-form", class extends HTMLElement {
-      set schema(v) { this._s = v; this.render(); }
-      set data(v) { this._d = v; this.render(); }
-      set hass(v) {}
-      set computeLabel(f) { this._l = f; this.render(); }
-      set computeHelper(f) {}
-      render() {
-        if (!this._s || !this._d) return;
-        const rows = [];
-        const walk = (items) => items.forEach((i) => i.schema ? walk(i.schema) : rows.push(`${this._l ? this._l(i) : i.name}: ${JSON.stringify(this._d[i.name])}`));
-        walk(this._s);
-        this.innerHTML = `<pre>${rows.join("\n")}</pre>`;
       }
     });
 
@@ -309,39 +395,87 @@
 
     const grid = document.getElementById("grid");
     const cards = [];
-    for (const { label, config } of configs) {
-      const cell = document.createElement("div");
-      cell.className = "cell";
-      const h = document.createElement("h2");
-      h.textContent = label;
+    const buildTechnicalExamples = () => {
+      if (grid.childElementCount) return;
+      for (const { label, config } of configs) {
+        const cell = document.createElement("div");
+        cell.className = "cell";
+        const h = document.createElement("h2");
+        h.textContent = label;
+        const card = document.createElement("pinboard-card");
+        card.setConfig(config);
+        card.hass = makeHass();
+        cell.append(h, card);
+        grid.append(cell);
+        cards.push(card);
+      }
+      const sectionConfigs = [
+        { type: "custom:pinboard-card", title: "Greenhouse", image: "./garden.jpg", default_side: "note", note: "**Water in the morning**, the afternoon sun burns the leaves.\n\nTap the note to see the picture behind it.\n\n- Tomatoes: every second day\n- Herbs: twice a week" },
+        { type: "custom:pinboard-card", title: "Kitchen", slides: [{ image: "./kitchen.jpg" }, { note: "Note between" }, { image: "./workshop.jpg" }] },
+        { type: "custom:pinboard-card", title: "Long note", image: "./workshop.jpg", default_side: "note", note_entity: "input_text.fridge_note", note: "" },
+        { type: "custom:pinboard-card", layout: "grid", images: [{ image: "./kitchen.jpg", title: "A", note: "Note A" }, { image: "./garden.jpg", title: "B", note: "Note B" }] },
+      ];
+      document.querySelectorAll("#sections .host").forEach((host, i) => {
+        const card = document.createElement("pinboard-card");
+        card.setConfig(sectionConfigs[i]);
+        card.hass = makeHass();
+        host.append(card);
+        cards.push(card);
+      });
+    };
+    document.getElementById("technical-tests").addEventListener("toggle", (event) => {
+      if (event.currentTarget.open) buildTechnicalExamples();
+    });
+    const editor = document.querySelector("pinboard-card-editor");
+    const initialConfig = { ...configs[1].config, image: "./kitchen.jpg" };
+    editor.setConfig(initialConfig);
+    editor.hass = makeHass();
+    const livePreview = document.createElement("pinboard-card");
+    document.getElementById("playground-preview").append(livePreview);
+    cards.push(livePreview);
+    const updatePlayground = (config) => {
+      livePreview.setConfig(config);
+      livePreview.hass = makeHass();
+      document.getElementById("config-output").textContent = JSON.stringify(config, null, 2);
+    };
+    updatePlayground(initialConfig);
+    editor.addEventListener("config-changed", (ev) => updatePlayground(ev.detail.config));
+    const showcase = [
+      { title: "A photo with a story", help: "Tap the kitchen photo to find its maintenance note on the back.", config: configs[0].config },
+      { title: "A note everyone can edit", help: "Use the pencil to leave a message. In Home Assistant, it is saved to your text helper.", config: { ...configs[1].config, image: "./kitchen.jpg", default_side: "note" } },
+      { title: "One shared shopping list", help: "Tick off an item or add another. Your to-do list keeps every device in sync.", config: { type: "custom:pinboard-card", title: "Shopping", todo_entity: "todo.shopping", color: "yellow", note_style: "sticky" } },
+      { title: "The garden, at a glance", help: "Each tile turns independently. A picture and its care note stay together.", config: { type: "custom:pinboard-card", title: "Garden", layout: "grid", columns: 2, slides: [
+        { image: "./garden.jpg", title: "Tomatoes", note: "Water in the morning." },
+        { image: "./garden.jpg", title: "Herbs", note: "Trim the mint on Sunday." },
+      ] } },
+      { title: "Remember where things are", help: "Tap a pin to identify a tool. In your own dashboard, pins can also show entity states.", config: { type: "custom:pinboard-card", title: "Workshop", image: "./workshop.jpg", markers: [
+        { x: 30, y: 45, label: "Hand tools" },
+        { x: 72, y: 30, label: "Clamps" },
+      ], note: "Keep these tools in their marked places." } },
+      { title: "Leave a voice memo", help: "A photo, a note and an audio page in one card. The demo player uses a silent sample.", config: configs[16].config },
+    ];
+    for (const { title, help, config } of showcase) {
+      const cell = document.createElement("article");
+      cell.className = "cell showcase-cell";
+      const heading = document.createElement("h3");
+      heading.textContent = title;
       const card = document.createElement("pinboard-card");
       card.setConfig(config);
       card.hass = makeHass();
-      cell.append(h, card);
-      grid.append(cell);
+      const description = document.createElement("p");
+      description.textContent = help;
+      cell.append(heading, card, description);
+      document.getElementById("showcase").append(cell);
       cards.push(card);
     }
-    const sectionConfigs = [
-      { type: "custom:pinboard-card", title: "Greenhouse", image: "./garden.jpg", default_side: "note", note: "**Water in the morning**, the afternoon sun burns the leaves.\n\nTap the note to see the picture behind it.\n\n- Tomatoes: every second day\n- Herbs: twice a week" },
-      { type: "custom:pinboard-card", title: "Kitchen", slides: [{ image: "./kitchen.jpg" }, { note: "Note between" }, { image: "./workshop.jpg" }] },
-      { type: "custom:pinboard-card", title: "Long note", image: "./workshop.jpg", default_side: "note", note_entity: "input_text.fridge_note", note: "" },
-      { type: "custom:pinboard-card", layout: "grid", images: [{ image: "./kitchen.jpg", title: "A", note: "Note A" }, { image: "./garden.jpg", title: "B", note: "Note B" }] },
-    ];
-    document.querySelectorAll("#sections .host").forEach((host, i) => {
-      const card = document.createElement("pinboard-card");
-      card.setConfig(sectionConfigs[i]);
-      card.hass = makeHass();
-      host.append(card);
-      cards.push(card);
-    });
-    const editor = document.querySelector("pinboard-card-editor");
-    editor.setConfig(configs[1].config);
-    editor.hass = makeHass();
-    editor.addEventListener("config-changed", (ev) => console.log("config-changed", ev.detail.config));
 
     const push = () => { const h = makeHass(); cards.forEach((c) => (c.hass = h)); editor.hass = h; };
     listeners.add(push);
-    document.getElementById("theme").addEventListener("click", () => document.body.classList.toggle("dark"));
+    document.getElementById("theme").addEventListener("click", (event) => {
+      const dark = document.body.classList.toggle("dark");
+      event.currentTarget.setAttribute("aria-pressed", String(dark));
+      event.currentTarget.textContent = dark ? "Light theme" : "Dark theme";
+    });
     document.getElementById("lang").addEventListener("click", () => { language = language === "en" ? "de" : "en"; push(); });
     document.getElementById("flipall").addEventListener("click", () => cards.forEach((c) => c.flip()));
     window.__setState = (id, state) => { states[id] = { ...states[id], state, last_changed: new Date().toISOString() }; push(); };

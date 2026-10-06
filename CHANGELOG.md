@@ -5,7 +5,39 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-09-20
+### Added
+
+- Editor templates for a shared shopping list, an editable family note and
+  a maintenance note. Templates select existing entities and preserve
+  existing pages and card settings.
+- Localized setup tips for missing or unavailable entities, read-only notes,
+  missing note attributes, YAML checklists and entity text length limits.
+- An interactive demo editor with simulated form controls and a separate
+  live preview instead of JSON-only form dumps.
+- README release and validation badges, direct demo and HACS links, and
+  practical examples for shared shopping lists, editable notes and a family
+  pinboard.
+- Installation troubleshooting for resources, writable checklists, note
+  editing and microphone access.
+
+### Changed
+
+- The public demo is a responsive showcase with six everyday examples.
+  Technical regression fixtures are collapsed and loaded only when opened.
+- Repository About now describes the card's main features and links to the
+  live demo.
+- Manual installation points to the built JavaScript asset in the latest
+  GitHub release.
+
+### Fixed
+
+- Demo form styling now lives inside each simulated form's shadow root, so
+  labels, full-width controls and help text are properly spaced in the
+  editor, including on mobile and in dark mode.
+- Picture upload feedback now targets its own status field rather than
+  other messages above the picture section.
+
+## [1.0.0] - 2026-10-06
 
 First release from the public GitHub repository. Everything up to 0.2.1 was
 developed as "ImageNote" and released through Forgejo. The card type

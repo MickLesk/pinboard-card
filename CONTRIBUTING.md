@@ -27,7 +27,7 @@ resource, or point HACS at your fork as a custom repository.
 | `src/` | TypeScript sources. `pinboard-card.ts` registers the elements; `card.ts` is the card, `editor.ts` the visual editor. |
 | `src/i18n.ts` | All user-facing strings, English and German. |
 | `dist/` | The committed bundle HACS serves. CI fails when it is out of date. |
-| `demo/` | A static page with minimal stand-ins for `ha-card`, `ha-icon`, `ha-markdown` and `ha-form`. Used by the tests and for screenshots. |
+| `demo/` | A responsive showcase, editor playground and collapsible technical fixtures. Stand-ins for Home Assistant elements include simulated form controls in `form.js`. Used by the tests and for screenshots. |
 | `tests/` | Playwright smoke tests against the demo page, run with `node --test`. |
 | `scripts/` | Build, bundle checks, demo server, changelog tooling, `screenshots.mjs`. |
 | `docs/images/` | Screenshots used in the README. Regenerate with `npm run screenshots` whenever the card's looks change. |
@@ -76,6 +76,18 @@ resource, or point HACS at your fork as a custom repository.
   `hass.callWS`, the image and media upload endpoints). When you rely on
   something new, note the minimum Home Assistant version in `hacs.json`.
 
+## Demo and browser tests
+
+The public demo separates the showcase from technical regression fixtures.
+Opening *Technical examples & edge cases* creates the fixtures in `#grid`
+and `#sections`; the shared test helper opens this section before running
+the existing card tests. Public-demo tests leave it collapsed.
+
+Keep the demo's simulated controls separate from production Home Assistant
+code. The demo does not persist uploads or recordings and does not reproduce
+every Home Assistant selector. Test layout changes at phone, tablet and
+desktop widths, and keep the simulation notice visible.
+
 ## Reporting bugs and proposing features
 
 Use the issue templates. For bugs, include the card YAML, the Home Assistant
@@ -85,14 +97,19 @@ version, the browser, and what you saw. Screenshots help a lot.
 
 Releases follow [semantic versioning](https://semver.org/): a breaking change
 to the YAML options bumps the major version, new options bump the minor, fixes
-the patch. Pre-releases look like `0.3.0-beta.1`.
+the patch. Pre-releases look like `1.1.0-beta.1`.
+
+The first public GitHub release is `v1.0.0`; the next planned version is
+`1.1.0`. During preparation, `package.json` and the committed bundle may
+already carry the next version. Keep its changelog entries under `Unreleased`
+until publishing; the workflow creates the dated version section.
 
 To cut a release:
 
 1. Make sure `main` is green and the `Unreleased` section of `CHANGELOG.md`
    lists everything that shipped since the last version.
 2. Open **Actions → Release → Run workflow**, enter the version (for example
-   `0.3.0`) and tick *pre-release* for betas.
+   `1.1.0`) and tick *pre-release* for betas.
 
 The workflow bumps `package.json`, moves the `Unreleased` notes under the new
 version in `CHANGELOG.md`, rebuilds `dist/`, runs the tests, commits, tags

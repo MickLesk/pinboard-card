@@ -4,6 +4,42 @@ Pinboard has a visual editor for everything in the [options
 table](../README.md#options). This page covers what the editor does beyond
 filling in fields.
 
+## Templates
+
+Available from **1.1.0**. Open *Start with a template*, choose the kind and,
+where needed, select an existing entity. Then press *Add template page*.
+
+| Template | Result | Entity |
+| --- | --- | --- |
+| **Shopping list** | A yellow to-do page; items can be ticked, added and edited on the card. | An existing `todo.*` list. |
+| **Family note** | A blue note that can be edited on the card. | An existing `input_text.*` or `text.*` entity. |
+| **Maintenance note** | A green Markdown note with headings for the last and next service and space for instructions. Edit its text in the editor. | None. |
+
+Templates append an entry and leave existing content, card appearance,
+navigation and card-wide actions unchanged. A completely blank card uses
+its empty entry instead. The ten-page limit applies to templates too: a
+picture with a note already counts as two pages.
+
+Pinboard does not create entities for you. If the list is empty, the editor
+explains where to create a Local To-do list or a Text helper in Home
+Assistant. No placeholder entity IDs are written to the card.
+
+## Setup tips
+
+The editor shows tips for the selected entry:
+
+- Missing entities and entities whose state is unknown or unavailable.
+- Notes that cannot be edited on the card: use an `input_text` / `text`
+  entity without `note_attribute` for editing.
+- A `note_attribute` that does not exist on the selected entity.
+- YAML checklists, whose ticks cannot be saved. Use a to-do list or an
+  editable text entity instead.
+- The maximum length reported by a writable text entity. To-do item details
+  are a better fit for longer notes.
+
+Tips update when Home Assistant's state changes. They explain the current
+configuration without changing it.
+
 ## Entries
 
 *Pictures and notes* at the top lists the entries as chips: "1 · Picture",
@@ -61,3 +97,16 @@ points at an `input_text` / `text` entity that holds the address.
 
 The card at the bottom follows the current settings. *Play animation* turns
 it to the next page so the transitions can be compared without saving.
+
+## Trying the public demo
+
+The [demo](https://micklesk.github.io/pinboard-card/demo/) has a live preview
+and simulated form controls, so you can try templates and change fields
+without installing the card. The sample entities are not your own entities.
+Changes reset on reload; uploads and recordings do not persist files, and
+the audio player uses a silent sample. The actual Home Assistant editor
+uses Home Assistant's own forms and selectors.
+
+The *Technical examples & edge cases* section is separate and collapsed by
+default. It loads the regression fixtures only when opened; some examples
+intentionally contain missing pictures and entities.
