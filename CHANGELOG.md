@@ -5,6 +5,8 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-06
+
 ### Added
 
 - Editor templates for a shared shopping list, an editable family note and
