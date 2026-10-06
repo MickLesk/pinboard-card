@@ -1,0 +1,352 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pinboard Card – demo</title>
+  <style>
+    :root {
+      --primary-color: #03a9f4;
+      --rgb-primary-color: 3, 169, 244;
+      --primary-text-color: #212121;
+      --rgb-primary-text-color: 33, 33, 33;
+      --secondary-text-color: #727272;
+      --text-primary-color: #fff;
+      --card-background-color: #fff;
+      --ha-card-background: #fff;
+      --secondary-background-color: #e5e5e5;
+      --divider-color: rgba(0, 0, 0, 0.12);
+      --error-color: #db4437;
+      --ha-card-border-radius: 12px;
+      --mdc-icon-size: 24px;
+    }
+    body.dark {
+      --primary-text-color: #e1e1e1;
+      --rgb-primary-text-color: 225, 225, 225;
+      --secondary-text-color: #9b9b9b;
+      --card-background-color: #1c1c1c;
+      --ha-card-background: #1c1c1c;
+      --secondary-background-color: #282828;
+      --divider-color: rgba(255, 255, 255, 0.12);
+      background: #111;
+      color: var(--primary-text-color);
+    }
+    body {
+      margin: 0;
+      padding: 24px;
+      font-family: Roboto, "Segoe UI", system-ui, sans-serif;
+      background: #fafafa;
+      color: var(--primary-text-color);
+    }
+    h1 { font-size: 20px; font-weight: 500; margin: 0 0 4px; }
+    p.lead { margin: 0 0 20px; color: var(--secondary-text-color); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; max-width: 1100px; }
+    .cell h2 { font-size: 13px; font-weight: 500; margin: 0 0 8px; color: var(--secondary-text-color); text-transform: uppercase; letter-spacing: .06em; }
+    .toolbar { margin-bottom: 20px; display: flex; gap: 12px; }
+    button { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--divider-color); background: var(--card-background-color); color: inherit; cursor: pointer; }
+    ha-card { display: block; background: var(--ha-card-background); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    #editor { max-width: 520px; margin-top: 32px; padding: 16px; border-radius: 12px; background: var(--card-background-color); box-shadow: 0 2px 6px rgba(0,0,0,.12); }
+    #editor h2 { font-size: 14px; margin: 0 0 12px; }
+    ha-form { display: block; }
+    ha-form pre { font-size: 12px; background: var(--secondary-background-color); padding: 8px; border-radius: 8px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Pinboard Card – demo</h1>
+  <p class="lead">Local preview with minimal Home Assistant stubs. Tap a card to flip it.</p>
+  <div class="toolbar">
+    <button id="theme">Toggle dark theme</button>
+    <button id="lang">Toggle language (en/de)</button>
+    <button id="flipall">Flip all</button>
+  </div>
+  <div class="grid" id="grid"></div>
+
+  <h2 style="font-size:13px;font-weight:500;margin:28px 0 8px;color:var(--secondary-text-color);text-transform:uppercase;letter-spacing:.06em">Sections view: fixed-height hosts (2 rows = 120px, 3 columns ≈ 245px)</h2>
+  <div id="sections" style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-start">
+    <div class="host" style="height:120px;width:245px"></div>
+    <div class="host" style="height:120px;width:245px"></div>
+    <div class="host" style="height:232px;width:520px"></div>
+    <div class="host" style="height:232px;width:400px"></div>
+  </div>
+
+  <div id="editor">
+    <h2>Editor element (ha-form is stubbed as a JSON dump)</h2>
+    <pinboard-card-editor></pinboard-card-editor>
+  </div>
+
+  <script type="module">
+    // ---- Minimal stand-ins for Home Assistant elements -------------------------
+    const ICONS = {
+      "mdi:note-text-outline": "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6m4 18H6V4h7v5h5v11M8 12h8v2H8v-2m0 4h8v2H8v-2Z",
+      "mdi:image-outline": "M19 19H5V5h14m0-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2m-5.04 9.29-2.75 3.54-1.96-2.36L6.5 17h11l-3.54-4.71Z",
+      "mdi:image-plus-outline": "M18 15v3h-3v2h3v3h2v-3h3v-2h-3v-3h-2m-5 4H5V5h14v7.9c.7.1 1.4.3 2 .6V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8.9c-.3-.6-.5-1.3-.6-2m-.4-7.7-2.75 3.54-1.96-2.36L6.5 17h6.6c.2-1.5.9-2.9 2-4L12.6 11.3Z",
+      "mdi:image-broken-variant": "M21 5v6.59l-3-3.01-4 4.01-4-4-4 4-3-3.01V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2m-3 6.42 3 3.01V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6.58l3 2.99 4-4 4 4 4-3.99Z",
+      "mdi:pencil-outline": "M14.06 9.02l.92.92L5.92 19H5v-.92l9.06-9.06M17.66 3c-.25 0-.51.1-.7.29l-1.83 1.83 3.75 3.75 1.83-1.83a1 1 0 0 0 0-1.41l-2.34-2.34c-.2-.2-.45-.29-.71-.29m-3.6 3.19L3 17.25V21h3.75L17.81 9.94l-3.75-3.75Z",
+      "mdi:upload": "M9 16v-6H5l7-7 7 7h-4v6H9m-4 4v-2h14v2H5Z",
+      "mdi:chevron-left": "M15.41 16.58 10.83 12l4.58-4.59L14 6l-6 6 6 6 1.41-1.42Z",
+      "mdi:chevron-right": "M8.59 16.58 13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.42Z",
+      "mdi:arrow-left": "M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z",
+      "mdi:arrow-right": "M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11H4Z",
+      "mdi:image-text": "M22 13h-8v-2h8v2m0-6h-8v2h8V7m-8 10h8v-2h-8v2m-2-8v6c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V9c0-1.1.9-2 2-2h6c1.1 0 2 .9 2 2m-1.5 6-2.25-3-1.75 2.26-1.25-1.51L3.5 15h7Z",
+      "mdi:camera-plus-outline": "M20 5h-3.17L15 3H9L7.17 5H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h9.09A5.5 5.5 0 0 1 13 20a5.47 5.47 0 0 1 .6-2.5H4V7h4.05l1.83-2h4.24l1.83 2H20v5.09c.71.11 1.39.33 2 .64V7a2 2 0 0 0-2-2M12 9a3.5 3.5 0 0 1 3.5 3.5c0 .28-.04.55-.1.81a5.5 5.5 0 0 0-3.4 1.43v.01A3.5 3.5 0 0 1 12 9m6 6h2v3h3v2h-3v3h-2v-3h-3v-2h3v-3Z",
+      "mdi:water-off": "M12 3.25S6 10 6 14c0 .77.15 1.5.43 2.19l8.24 8.24C13.86 24.79 12.94 25 12 25M20 20.72 3.27 4 2 5.27l4.71 4.71C6.23 10.87 6 12.4 6 14a6 6 0 0 0 6 6c1.03 0 2-.26 2.86-.72l3.87 3.87L20 21.86Z",
+      "mdi:folder-image": "M5 17l3.5-4.5 2.5 3 3.5-4.5 4.5 6H5M20 6h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Z",
+      "mdi:play": "M8 5.14v14l11-7-11-7Z",
+      "mdi:microphone-outline": "M17.3 11c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.49 6-3.31 6-6.72m-8.2-6.1c0-.66.54-1.2 1.2-1.2.66 0 1.2.54 1.2 1.2l-.01 6.2c0 .66-.53 1.2-1.19 1.2-.66 0-1.2-.54-1.2-1.2M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3 3 3 0 0 0-3 3v6a3 3 0 0 0 3 3Z",
+      "mdi:microphone": "M12 2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a3 3 0 0 1 3-3m7 9c0 3.53-2.61 6.44-6 6.93V21h-2v-3.07c-3.39-.49-6-3.4-6-6.93h2a5 5 0 0 0 5 5 5 5 0 0 0 5-5h2Z",
+      "mdi:microphone-plus": "M14 2a3 3 0 0 1 3 3v6a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a3 3 0 0 1 3-3m6 9h-2a4 4 0 0 1-4 4 4 4 0 0 1-4-4H8c0 3.53 2.61 6.44 6 6.93V21h2v-3.07c3.39-.49 6-3.4 6-6.93M2 7v2h3v3h2V9h3V7H7V4H5v3Z",
+      "mdi:pause": "M14 19h4V5h-4M6 19h4V5H6v14Z",
+      "mdi:format-bold": "M13.5 15.5H10v-3h3.5A1.5 1.5 0 0 1 15 14a1.5 1.5 0 0 1-1.5 1.5m-3.5-9h3A1.5 1.5 0 0 1 14.5 8 1.5 1.5 0 0 1 13 9.5h-3m5.6 1.29c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42Z",
+      "mdi:format-italic": "M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4h-8Z",
+      "mdi:format-header-2": "M3 4h2v6h4V4h2v14H9v-6H5v6H3V4m18 14h-6v-2l4.2-4.6c.4-.5.6-1 .6-1.5 0-.8-.7-1.4-1.6-1.4s-1.7.6-1.7 1.5h-2c0-2 1.7-3.5 3.7-3.5s3.6 1.4 3.6 3.4c0 1-.5 1.8-1.1 2.5L17 16h4v2Z",
+      "mdi:format-list-bulleted": "M7 5h14v2H7V5m0 8v-2h14v2H7M4 4.5A1.5 1.5 0 0 1 5.5 6 1.5 1.5 0 0 1 4 7.5 1.5 1.5 0 0 1 2.5 6 1.5 1.5 0 0 1 4 4.5m0 6A1.5 1.5 0 0 1 5.5 12 1.5 1.5 0 0 1 4 13.5 1.5 1.5 0 0 1 2.5 12 1.5 1.5 0 0 1 4 10.5M7 19v-2h14v2H7m-3-2.5A1.5 1.5 0 0 1 5.5 18 1.5 1.5 0 0 1 4 19.5 1.5 1.5 0 0 1 2.5 18 1.5 1.5 0 0 1 4 16.5Z",
+      "mdi:format-list-checks": "M3 5h6v6H3V5m2 2v2h2V7H5m6 0h10v2H11V7m0 8h10v2H11v-2m-6 5-3.5-3.5 1.41-1.41L5 17.17l4.59-4.58L11 14l-6 6Z",
+      "mdi:link-variant": "M10.59 13.41c.41.39.41 1.03 0 1.42-.39.39-1.03.39-1.42 0a5.003 5.003 0 0 1 0-7.07l3.54-3.54a5.003 5.003 0 0 1 7.07 0 5.003 5.003 0 0 1 0 7.07l-1.49 1.49c.01-.82-.12-1.64-.4-2.42l.47-.48a2.982 2.982 0 0 0 0-4.24 2.982 2.982 0 0 0-4.24 0l-3.53 3.53a2.982 2.982 0 0 0 0 4.24m2.82-4.24c.39-.39 1.03-.39 1.42 0a5.003 5.003 0 0 1 0 7.07l-3.54 3.54a5.003 5.003 0 0 1-7.07 0 5.003 5.003 0 0 1 0-7.07l1.49-1.49c-.01.82.12 1.64.4 2.43l-.47.47a2.982 2.982 0 0 0 0 4.24 2.982 2.982 0 0 0 4.24 0l3.53-3.53a2.982 2.982 0 0 0 0-4.24.973.973 0 0 1 0-1.42Z",
+      "mdi:history": "M13.5 8H12v5l4.28 2.54.72-1.21-3.5-2.08V8M13 3a9 9 0 0 0-9 9H1l3.96 4.03L9 12H6a7 7 0 0 1 7-7 7 7 0 0 1 7 7 7 7 0 0 1-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.896 8.896 0 0 0 13 21a9 9 0 0 0 9-9 9 9 0 0 0-9-9Z",
+      "mdi:plus": "M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2Z",
+      "mdi:delete-outline": "M9 3v1H4v2h1v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6h1V4h-5V3H9m0 5h2v9H9V8m4 0h2v9h-2V8Z",
+      "mdi:close": "M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z",
+    };
+    customElements.define("ha-card", class extends HTMLElement {});
+    customElements.define("ha-icon", class extends HTMLElement {
+      static get observedAttributes() { return ["icon"]; }
+      constructor() { super(); this.attachShadow({ mode: "open" }); }
+      attributeChangedCallback() { this.render(); }
+      connectedCallback() { this.render(); }
+      render() {
+        const d = ICONS[this.getAttribute("icon")] ?? "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z";
+        this.shadowRoot.innerHTML = `<style>:host{display:inline-flex;width:var(--mdc-icon-size,24px);height:var(--mdc-icon-size,24px);align-items:center;justify-content:center}svg{width:100%;height:100%;fill:currentColor}</style><svg viewBox="0 0 24 24"><path d="${d}"/></svg>`;
+      }
+    });
+    // Very small markdown: **bold**, *em*, line breaks, "- " lists.
+    customElements.define("ha-markdown", class extends HTMLElement {
+      set content(v) { this._c = v; this.render(); }
+      get content() { return this._c; }
+      render() {
+        const esc = (s) => s.replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
+        const html = esc(this._c ?? "")
+          .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+          .replace(/\*(.+?)\*/g, "<em>$1</em>")
+          .split(/\n{2,}/).map((p) => p.startsWith("- ")
+            ? "<ul>" + p.split("\n").map((l) => `<li>${l.replace(/^- /, "")}</li>`).join("") + "</ul>"
+            : `<p>${p.replace(/\n/g, "<br>")}</p>`).join("");
+        this.innerHTML = html;
+      }
+    });
+    customElements.define("ha-form", class extends HTMLElement {
+      set schema(v) { this._s = v; this.render(); }
+      set data(v) { this._d = v; this.render(); }
+      set hass(v) {}
+      set computeLabel(f) { this._l = f; this.render(); }
+      set computeHelper(f) {}
+      render() {
+        if (!this._s || !this._d) return;
+        const rows = [];
+        const walk = (items) => items.forEach((i) => i.schema ? walk(i.schema) : rows.push(`${this._l ? this._l(i) : i.name}: ${JSON.stringify(this._d[i.name])}`));
+        walk(this._s);
+        this.innerHTML = `<pre>${rows.join("\n")}</pre>`;
+      }
+    });
+
+    // ---- Fake hass --------------------------------------------------------------
+    const states = {
+      "sensor.boiler_temp": { entity_id: "sensor.boiler_temp", state: "54.5", attributes: { unit_of_measurement: "°C", friendly_name: "Boiler" } },
+      "input_text.door_photo": { entity_id: "input_text.door_photo", state: "./workshop.jpg", attributes: { max: 255, friendly_name: "Door photo" } },
+      "sensor.pressure": { entity_id: "sensor.pressure", state: "1.6", attributes: { unit_of_measurement: "bar", friendly_name: "Boiler pressure" } },
+      "input_text.memo": { entity_id: "input_text.memo", state: "", attributes: { max: 255, friendly_name: "Memo" } },
+      "person.mickey": { entity_id: "person.mickey", state: "home", attributes: { friendly_name: "Mickey", user_id: "u1" } },
+      "todo.shopping": { entity_id: "todo.shopping", state: "2", attributes: { friendly_name: "Shopping list" }, last_changed: new Date(Date.now() - 600000).toISOString() },
+      "binary_sensor.doorbell": { entity_id: "binary_sensor.doorbell", state: "off", attributes: { friendly_name: "Doorbell" } },
+      "input_text.shopping": { entity_id: "input_text.shopping", state: "- [x] Milk\n- [ ] Bread\n- [ ] Coffee beans", attributes: { max: 255, friendly_name: "Shopping" }, last_changed: new Date(Date.now() - 3 * 3600000).toISOString() },
+      "input_text.fridge_note": { entity_id: "input_text.fridge_note", state: "Milk is running low – buy 2 litres on Friday.", attributes: { max: 255, friendly_name: "Fridge note" }, last_changed: new Date(Date.now() - 7 * 60000).toISOString() },
+    };
+    let language = "en";
+    const listeners = new Set();
+    const templateSubs = new Set();
+    const todoItems = [
+      { uid: "a1", summary: "Milk", status: "completed", description: "The **lactose-free** one." },
+      { uid: "b2", summary: "Bread", status: "needs_action" },
+      { uid: "c3", summary: "Coffee beans", status: "needs_action" },
+    ];
+    const todoSubs = new Set();
+    const notifyTodo = () => todoSubs.forEach((f) => f({ items: todoItems.map((i) => ({ ...i })) }));
+    window.__todoItems = todoItems;
+    const makeHass = () => ({
+      states: { ...states },
+      language,
+      locale: { language },
+      async callService(domain, service, data) {
+        await new Promise((r) => setTimeout(r, 400));
+        if (domain === "todo" && service === "update_item") {
+          const item = todoItems.find((i) => i.uid === data.item || i.summary === data.item);
+          if (item && data.status) item.status = data.status;
+          notifyTodo();
+        }
+        if (domain === "todo" && service === "update_item" && (data.rename || data.description !== undefined)) {
+          const item = todoItems.find((i) => i.uid === data.item);
+          if (item && data.rename) item.summary = data.rename;
+          if (item && data.description !== undefined) item.description = data.description;
+          notifyTodo();
+        }
+        if (domain === "todo" && service === "remove_item") {
+          for (const uid of data.item) { const i = todoItems.findIndex((x) => x.uid === uid); if (i >= 0) todoItems.splice(i, 1); }
+          notifyTodo();
+        }
+        if (domain === "todo" && service === "add_item") {
+          todoItems.push({ uid: "n" + Date.now(), summary: data.item, status: "needs_action" });
+          notifyTodo();
+        }
+        if (service === "set_value") {
+          states[data.entity_id] = { ...states[data.entity_id], state: data.value, last_changed: new Date().toISOString() };
+          listeners.forEach((f) => f());
+          templateSubs.forEach((f) => f());
+        }
+      },
+      connection: {
+        // Just enough of render_template for the demo: {{ states('x') }} and {{ now().strftime(...) }}.
+        async subscribeMessage(callback, msg) {
+          if (msg.type === "todo/item/subscribe") {
+            todoSubs.add(callback);
+            callback({ items: todoItems.map((i) => ({ ...i })) });
+            return async () => todoSubs.delete(callback);
+          }
+          const render = () => msg.template
+            .replace(/\{\{\s*states\('([^']+)'\)\s*\}\}/g, (_, id) => states[id]?.state ?? "unknown")
+            .replace(/\{\{[^}]*\}\}/g, "…");
+          callback({ result: render() });
+          templateSubs.add(() => callback({ result: render() }));
+          return async () => {};
+        },
+      },
+      async fetchWithAuth(path, init) {
+        await new Promise((r) => setTimeout(r, 200));
+        window.__uploads = (window.__uploads ?? 0) + 1;
+        if (path === "/api/image/upload") return new Response(JSON.stringify({ id: "demo123" }), { status: 200 });
+        return new Response(JSON.stringify({ media_content_id: "media-source://media_source/local/pinboard/demo.jpg" }), { status: 200 });
+      },
+      async callWS(msg) {
+        if (msg.type === "media_source/resolve_media") return { url: "./garden.jpg", mime_type: "image/svg+xml" };
+        if (msg.type === "logbook/get_events") return [
+          { when: Date.now() / 1000 - 7200, entity_id: msg.entity_ids[0], state: "Milk is running low – buy 2 litres on Friday.", context_user_id: "u1" },
+          { when: Date.now() / 1000 - 86400 * 2, entity_id: msg.entity_ids[0], state: "Defrost on Sunday.", context_user_id: null },
+          { when: Date.now() / 1000 - 86400 * 5, entity_id: msg.entity_ids[0], state: "Defrost on Sunday.", context_user_id: null },
+        ];
+        if (msg.type === "media_source/browse_media") return { children: [
+          { media_content_id: msg.media_content_id + "/a.jpg", media_class: "image", media_content_type: "image/jpeg", title: "a.jpg" },
+          { media_content_id: msg.media_content_id + "/notes.txt", media_class: "directory", media_content_type: "" },
+          { media_content_id: msg.media_content_id + "/b.png", media_class: "image", media_content_type: "image/png", title: "b.png" },
+        ] };
+        throw new Error("unsupported");
+      },
+    });
+
+    await import("../dist/pinboard-card.js");
+
+    // A one-second silent WAV so the audio player has something to play.
+    const silentWav = (() => {
+      const rate = 8000, samples = rate;
+      const buf = new ArrayBuffer(44 + samples * 2), v = new DataView(buf);
+      const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+      str(0, "RIFF"); v.setUint32(4, 36 + samples * 2, true); str(8, "WAVE"); str(12, "fmt ");
+      v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, rate, true);
+      v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); str(36, "data"); v.setUint32(40, samples * 2, true);
+      return "data:audio/wav;base64," + btoa(String.fromCharCode(...new Uint8Array(buf)));
+    })();
+    const configs = [
+      { label: "3D flip (default)", config: { type: "custom:pinboard-card", title: "Kitchen", image: "./kitchen.jpg", note: "**Filter replaced** on 12 Oct.\n\nNext change due in 6 months.\n\n- Model: XY-200\n- Ordered from the usual shop" } },
+      { label: "Vertical flip, editable note (input_text)", config: { type: "custom:pinboard-card", title: "Fridge", image: "./garden.jpg", direction: "vertical", note_entity: "input_text.fridge_note" } },
+      { label: "Crossfade, 4:3, contain", config: { type: "custom:pinboard-card", title: "Garden", image: "./workshop.jpg", transition: "fade", aspect_ratio: "4:3", image_fit: "contain", note: "Water the tomatoes every second day.\nSeedlings go out after the last frost." } },
+      { label: "Slide, no title, starts on note", config: { type: "custom:pinboard-card", image: "./kitchen.jpg", transition: "slide", default_side: "note", note: "A card without a title.\n\nIt starts on the note side and slides to the picture." } },
+      { label: "Cube, media-source picture, auto flip 4 s", config: { type: "custom:pinboard-card", title: "Cube", image: "media-source://media_source/local/demo.jpg", transition: "cube", auto_flip: 4, note: "Media-source ids are resolved through the websocket API.\n\nThis one auto-flips every 4 seconds." } },
+      { label: "Empty states", config: { type: "custom:pinboard-card", title: "Nothing yet" } },
+      { label: "Broken picture + missing entity", config: { type: "custom:pinboard-card", title: "Broken", image: "./does-not-exist.jpg", note_entity: "input_text.missing" } },
+      { label: "Natural size, hover flip", config: { type: "custom:pinboard-card", title: "Natural", image: "./workshop.jpg", aspect_ratio: "auto", hover_flip: true, note: "Hover me on a desktop." } },
+      { label: "Gallery: three pictures, each with its own note", config: { type: "custom:pinboard-card", title: "Garage", images: [
+        { image: "./kitchen.jpg", title: "Bike", note: "Chain oiled in March." },
+        { image: "./garden.jpg", note: "Tyres: 2.5 bar front, 2.8 bar rear." },
+        { image: "./workshop.jpg", title: "Tools", note_entity: "input_text.fridge_note" },
+      ] } },
+      { label: "Free order: picture, note, note, picture, note (5 slides)", config: { type: "custom:pinboard-card", title: "Trip", slides: [
+        { image: "./workshop.jpg", title: "Arrival" },
+        { note: "Day 1: **arrived** late, hotel is fine." },
+        { note: "Day 2: hiking. Bring water." },
+        { image: "./garden.jpg", title: "Lake" },
+        { note_entity: "input_text.fridge_note", title: "Shopping" },
+      ] } },
+      { label: "Tiles: four pictures side by side, each flips on its own", config: { type: "custom:pinboard-card", title: "Garden", layout: "grid", columns: 2, images: [
+        { image: "./kitchen.jpg", title: "Tomatoes", note: "Water every second day." },
+        { image: "./garden.jpg", title: "Herbs", note: "Cut back the mint." },
+        { image: "./workshop.jpg", title: "Lawn", note_entity: "input_text.fridge_note" },
+        { image: "./kitchen.jpg", title: "Compost", note: "Turn it on Sunday." },
+      ] } },
+      { label: "Checklist from an input_text (writes back), sticky look", config: { type: "custom:pinboard-card", title: "Shopping", image: "./garden.jpg", note_entity: "input_text.shopping", note_style: "sticky", default_side: "note" } },
+      { label: "To-do list page (todo.shopping), add items on the card", config: { type: "custom:pinboard-card", title: "", image: "./kitchen.jpg", todo_entity: "todo.shopping", note: "Before the weekend:", default_side: "note" } },
+      { label: "Checklist in the config (read-only boxes), template, colour, expiry", config: { type: "custom:pinboard-card", title: "Boiler", slides: [
+        { image: "./kitchen.jpg" },
+        { note: "Boiler is at **{{ states('sensor.boiler_temp') }} °C**.\n\n- [ ] Check pressure\n- [x] Bleed radiators\n- [ ] Order filter", color: "blue" },
+        { note: "Parcel at the neighbour's until Friday.", color: "yellow", expires: "2020-01-01", title: "Old note" },
+        { note: "Valid for a while.", color: "green", expires: "2099-12-31" },
+        { note: "Dark page with light text.", color: "#2b3a55", text_color: "light" },
+      ] } },
+      { label: "Markers on the picture, Ken Burns", config: { type: "custom:pinboard-card", title: "Boiler room", image: "./kitchen.jpg", ken_burns: true, markers: [
+        { x: 30, y: 45, label: "Stopcock", icon: "mdi:water-off" },
+        { x: 72, y: 30, label: "Pressure gauge", entity: "sensor.pressure" },
+        { x: 85, y: 85, entity: "sensor.boiler_temp" },
+      ], note: "Turn the stopcock (1) before opening the filter." } },
+      { label: "Picture from an input_text with a camera button", config: { type: "custom:pinboard-card", title: "Front door", image_entity: "input_text.door_photo", note: "Latest photo of the door. Tap the camera to replace it." } },
+      { label: "Audio memo: picture, then a recording", config: { type: "custom:pinboard-card", title: "Voice memo", image: "./garden.jpg", audio: silentWav, note: "Also a note after the memo." } },
+      { label: "Audio from an input_text with a record button", config: { type: "custom:pinboard-card", title: "Memo box", audio_entity: "input_text.memo", color: "purple", note_style: "sticky" } },
+      { label: "Conditional page: the second picture only while binary_sensor.doorbell is on; per-page hold action", config: { type: "custom:pinboard-card", title: "Door", slides: [
+        { image: "./workshop.jpg", title: "Always" },
+        { image: "./kitchen.jpg", title: "Someone rang", visible: { entity: "binary_sensor.doorbell", state: "on" }, hold_action: { action: "url", url_path: "https://example.com/door" } },
+        { note: "Always shown too." },
+      ] } },
+      { label: "Hold → more-info, double tap → URL", config: { type: "custom:pinboard-card", title: "Actions", image: "./garden.jpg", note_entity: "input_text.fridge_note", hold_action: { action: "more-info" }, double_tap_action: { action: "url", url_path: "https://example.com" } } },
+    ];
+    window.__events = [];
+    document.addEventListener("hass-more-info", (ev) => window.__events.push({ type: "hass-more-info", detail: ev.detail }));
+    window.open = (url) => { window.__events.push({ type: "open", url }); return null; };
+
+    const grid = document.getElementById("grid");
+    const cards = [];
+    for (const { label, config } of configs) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      const h = document.createElement("h2");
+      h.textContent = label;
+      const card = document.createElement("pinboard-card");
+      card.setConfig(config);
+      card.hass = makeHass();
+      cell.append(h, card);
+      grid.append(cell);
+      cards.push(card);
+    }
+    const sectionConfigs = [
+      { type: "custom:pinboard-card", title: "Greenhouse", image: "./garden.jpg", default_side: "note", note: "**Water in the morning**, the afternoon sun burns the leaves.\n\nTap the note to see the picture behind it.\n\n- Tomatoes: every second day\n- Herbs: twice a week" },
+      { type: "custom:pinboard-card", title: "Kitchen", slides: [{ image: "./kitchen.jpg" }, { note: "Note between" }, { image: "./workshop.jpg" }] },
+      { type: "custom:pinboard-card", title: "Long note", image: "./workshop.jpg", default_side: "note", note_entity: "input_text.fridge_note", note: "" },
+      { type: "custom:pinboard-card", layout: "grid", images: [{ image: "./kitchen.jpg", title: "A", note: "Note A" }, { image: "./garden.jpg", title: "B", note: "Note B" }] },
+    ];
+    document.querySelectorAll("#sections .host").forEach((host, i) => {
+      const card = document.createElement("pinboard-card");
+      card.setConfig(sectionConfigs[i]);
+      card.hass = makeHass();
+      host.append(card);
+      cards.push(card);
+    });
+    const editor = document.querySelector("pinboard-card-editor");
+    editor.setConfig(configs[1].config);
+    editor.hass = makeHass();
+    editor.addEventListener("config-changed", (ev) => console.log("config-changed", ev.detail.config));
+
+    const push = () => { const h = makeHass(); cards.forEach((c) => (c.hass = h)); editor.hass = h; };
+    listeners.add(push);
+    document.getElementById("theme").addEventListener("click", () => document.body.classList.toggle("dark"));
+    document.getElementById("lang").addEventListener("click", () => { language = language === "en" ? "de" : "en"; push(); });
+    document.getElementById("flipall").addEventListener("click", () => cards.forEach((c) => c.flip()));
+    window.__setState = (id, state) => { states[id] = { ...states[id], state, last_changed: new Date().toISOString() }; push(); };
+    window.__cards = cards;
+    window.__hassStates = () => states;
+  </script>
+</body>
+</html>

@@ -1,0 +1,154 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to release, e.g. 0.2.0 or 0.2.0-beta.1"
+        required: true
+        type: string
+      prerelease:
+        description: "Mark as pre-release (HACS then only offers it to users who opt in)"
+        required: false
+        type: boolean
+        default: false
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+# Two releases must never push tags at the same time.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: Build, tag and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Credentials stay on disk: the "Commit and tag" step pushes with them.
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+            VERSION="${VERSION#v}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+          if ! [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a semantic version"
+            exit 1
+          fi
+          PRERELEASE=false
+          if [[ "$VERSION" == *-* ]] || [ "${{ inputs.prerelease }}" = "true" ]; then
+            PRERELEASE=true
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$PRERELEASE" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version and changelog
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag v$VERSION already exists"
+            exit 1
+          fi
+          CURRENT="$(node -p "require('./package.json').version")"
+          if [ "$CURRENT" != "$VERSION" ]; then
+            npm version "$VERSION" --no-git-tag-version
+          fi
+          if ! grep -qE "^## \[$VERSION\]" CHANGELOG.md; then
+            node scripts/release_changelog.mjs "$VERSION"
+          fi
+
+      - name: Build and verify
+        run: |
+          npm run typecheck
+          npm run build
+          npm run verify
+
+      - name: Install Chromium for the browser tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Browser smoke tests
+        run: npm test
+
+      - name: Check that the tag matches package.json
+        if: github.event_name == 'push'
+        shell: bash
+        run: |
+          set -euo pipefail
+          PKG="$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "${{ steps.version.outputs.version }}" ]; then
+            echo "::error::Tag ${{ steps.version.outputs.tag }} does not match package.json version $PKG"
+            exit 1
+          fi
+
+      - name: Commit and tag
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package.json package-lock.json CHANGELOG.md dist/
+          if ! git diff --cached --quiet; then
+            git commit -m "Release ${{ steps.version.outputs.tag }}"
+          fi
+          git tag -a "${{ steps.version.outputs.tag }}" -m "Release ${{ steps.version.outputs.tag }}"
+          git push origin HEAD:${{ github.ref_name }}
+          git push origin "${{ steps.version.outputs.tag }}"
+
+      - name: Extract release notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/release_changelog.mjs --notes "${{ steps.version.outputs.version }}" > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            printf 'Pinboard %s\n\nSee CHANGELOG.md for details.\n' "${{ steps.version.outputs.tag }}" > release-notes.md
+          fi
+          cat release-notes.md
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          FLAGS=(--latest)
+          if [ "$PRERELEASE" = "true" ]; then
+            FLAGS=(--prerelease --latest=false)
+          fi
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release edit "$TAG" --title "$TAG" --notes-file release-notes.md "${FLAGS[@]}"
+          else
+            gh release create "$TAG" --title "$TAG" --notes-file release-notes.md "${FLAGS[@]}"
+          fi
+          gh release upload "$TAG" dist/pinboard-card.js --clobber

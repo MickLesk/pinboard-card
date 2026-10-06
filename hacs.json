@@ -1,0 +1,6 @@
+{
+  "name": "Pinboard",
+  "render_readme": true,
+  "filename": "pinboard-card.js",
+  "homeassistant": "2024.10.0"
+}
