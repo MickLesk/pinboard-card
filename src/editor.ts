@@ -1535,6 +1535,7 @@ export class PinboardCardEditor extends HTMLElement {
           { name: "todo_add", selector: { boolean: {} } },
           { name: "todo_show_completed", selector: { boolean: {} } },
           { name: "show_history", selector: { boolean: {} } },
+          { name: "show_expand", selector: { boolean: {} } },
         ]),
       ]),
       section("upload_settings", "mdi:folder-image", t("editor_upload_settings"), false, [

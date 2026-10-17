@@ -791,6 +791,58 @@ ha-card {
   color: var(--secondary-text-color);
   padding: 8px 0;
 }
+.note-footer .expand-button {
+  margin-left: auto;
+  width: 30px;
+  height: 30px;
+  margin-top: -4px;
+  margin-bottom: -4px;
+}
+.note-footer .history-button + .expand-button,
+.note-footer .expand-button + .history-button {
+  margin-left: 0;
+}
+:host([expanded]) .expand-button {
+  display: none !important;
+}
+
+/* ---------- enlarged view ---------- */
+.expand-dialog {
+  border: none;
+  padding: 0;
+  margin: auto;
+  width: min(92vw, 680px);
+  max-height: 92vh;
+  border-radius: 16px;
+  background: var(--ha-card-background, var(--card-background-color, #fff));
+  color: var(--primary-text-color);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+.expand-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.55);
+}
+.expand-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 6px 20px;
+  font-size: 1.1em;
+  font-weight: 500;
+}
+.expand-header .title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expand-body {
+  padding: 0 12px 12px;
+}
+.expand-body pinboard-card {
+  display: block;
+  height: min(72vh, 720px);
+}
 .note-footer .history-button {
   margin-left: auto;
   width: 30px;

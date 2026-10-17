@@ -66,6 +66,7 @@ export const DEFAULTS: Omit<NormalizedConfig, "type" | "entries" | "slides"> = {
   todo_add: true,
   todo_show_completed: true,
   show_history: true,
+  show_expand: true,
   upload_target: "image",
   upload_folder: "pinboard",
   upload_max_size: 1920,

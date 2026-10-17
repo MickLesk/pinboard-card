@@ -1,6 +1,8 @@
 import type { ActionConfig, HomeAssistant } from "./types";
 
 export type ActionKind = "tap" | "hold" | "double_tap";
+/** What the card itself has to do after an action ran. */
+export type ActionResult = "flip" | "expand" | false;
 export type SwipeDirection = "left" | "right";
 
 /** Fires a Home Assistant frontend event on an element (bubbles through shadow roots). */
@@ -27,11 +29,13 @@ export async function runAction(
   card: { note_entity: string; image_entity: string },
   config: ActionConfig,
   confirmText: string,
-): Promise<boolean> {
+): Promise<ActionResult> {
   const defaultEntity = card.note_entity || card.image_entity || undefined;
   switch (config.action) {
     case "flip":
-      return true;
+      return "flip";
+    case "expand":
+      return "expand";
     case "none":
     case undefined:
       return false;

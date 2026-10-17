@@ -663,6 +663,46 @@ test("the editor's note block formats text and keeps a live preview", async () =
   await context.close();
 });
 
+test("small cards enlarge into a popup from the footer button or a long press", async () => {
+  const { page, context } = await openDemo();
+  const host = page.locator("#sections .host").first(); // 120 px high note card
+  const small = host.locator("pinboard-card");
+  const cur = () => small.locator(".face.current");
+  assert.equal(await cur().locator(".expand-button").isVisible(), true);
+  await cur().locator(".expand-button").click();
+  const dialog = small.locator("dialog.expand-dialog");
+  assert.equal(await dialog.evaluate((el) => el.open), true);
+  const inner = dialog.locator("pinboard-card");
+  assert.equal(await inner.getAttribute("expanded"), "");
+  assert.match(await inner.locator(".face.current .note-body").innerText(), /Herbs: twice a week/);
+  assert.equal(await inner.locator(".face.current .expand-button").isVisible(), false);
+  const height = await inner.evaluate((el) => el.getBoundingClientRect().height);
+  assert.ok(height > 300, `expanded card is ${height}px high`);
+  await dialog.locator(".expand-header .icon-button").click();
+  assert.equal(await small.locator("dialog").count(), 0);
+
+  // A long press opens it too when no hold action is configured.
+  const box = await small.locator(".stage").boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(650);
+  await page.mouse.up();
+  assert.equal(await small.locator("dialog.expand-dialog").evaluate((el) => el.open), true);
+  await page.keyboard.press("Escape");
+  await page.waitForTimeout(100);
+  assert.equal(await small.locator("dialog").count(), 0);
+
+  // The to-do page opens enlarged on the right page and still ticks items.
+  const todo = card(page, 12);
+  await todo.scrollIntoViewIfNeeded();
+  await todo.evaluate((el) => el.expand());
+  const big = todo.locator("dialog pinboard-card");
+  assert.match(await big.locator(".face.current .layer-note .note-header .title").innerText(), /Shopping list/);
+  await big.locator(".face.current .checklist").first().locator(".check input").nth(0).click();
+  await page.waitForFunction(() => window.__todoItems.find((i) => i.summary === "Bread").status === "completed");
+  await context.close();
+});
+
 test("empty and broken states show placeholders", async () => {
   const { page, context } = await openDemo();
   assert.match(await card(page, 5).locator(".face.current .placeholder").innerText(), /No picture yet/);
