@@ -235,6 +235,17 @@ it. `swipe: false` hands those swipes back to the dashboard. With more than two 
 on pictures (`show_navigation`). On note pages the arrows stay hidden so they
 never sit on the text.
 
+## Enlarging a page
+
+Slim cards, for example two rows high in a sections view, show only a line or
+two of a note or list. Whenever a page does not fit, an enlarge button appears
+in the footer; a long press on the card does the same as long as no hold action
+is configured. Both open the card in a popup at full size, starting on the
+current page: notes are readable, to-do items can be ticked and edited without
+hitting the wrong one, and the other pages are a swipe away. The popup closes
+with its button, the Escape key or a tap outside. `show_expand: false` turns
+both off; `action: expand` makes any tap, hold or double tap open it.
+
 ## Conditional pages
 
 A page can depend on an entity. It joins the sequence while the condition

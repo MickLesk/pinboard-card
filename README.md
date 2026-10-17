@@ -272,6 +272,7 @@ checklist_writeback: true          # save ticks to input_text / text entities
 todo_add: true                     # input row on to-do pages for new items
 todo_show_completed: true          # keep completed to-do items visible, struck through
 show_history: true                 # history button on notes from entities
+show_expand: true                  # enlarge button on pages that do not fit; a long press opens the same popup
 
 # --- uploads (editor upload button, camera and record buttons) -------------
 upload_target: image               # image: Home Assistant's image store (/config/image) | media: the media folder
@@ -330,6 +331,7 @@ double_tap_action:
 | `todo_add` | `true` | Input row on to-do pages for adding items. |
 | `todo_show_completed` | `true` | Keep completed to-do items visible below the open ones, struck through. |
 | `show_history` | `true` | History button on notes from entities: the last changes with time and person, from the logbook. |
+| `show_expand` | `true` | Enlarge button in the footer when a page does not fit the card, and a long press opens the same popup unless a hold action is set. |
 | `upload_target` | `image` | Where the editor's upload button and the camera and record buttons store files: `image` (Home Assistant's image store) or `media` (the media folder). Audio always goes to the media folder. |
 | `upload_folder` | `pinboard` | With `upload_target: media`: the folder below `/media`. Created on the first upload. |
 | `upload_max_size` | `1920` | Longest edge in pixels that pictures are scaled down to before upload. `0` keeps originals. |
@@ -381,6 +383,7 @@ The same objects Home Assistant's own cards use, plus `flip`.
 | `action` | Effect |
 | --- | --- |
 | `flip` | Show the next page. Default for `tap_action`. |
+| `expand` | Open the card enlarged in a popup, on the current page. |
 | `more-info` | Open the more-info dialog of `entity`, defaulting to the page's `note_entity`, then `image_entity`. |
 | `toggle` | Toggle `entity` (same default). |
 | `navigate` | Go to `navigation_path`; `navigation_replace: true` replaces the history entry. |

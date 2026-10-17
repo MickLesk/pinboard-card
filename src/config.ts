@@ -275,6 +275,7 @@ export function normalizeConfig(config: PinboardCardConfig): NormalizedConfig {
     todo_add: bool(config.todo_add, DEFAULTS.todo_add),
     todo_show_completed: bool(config.todo_show_completed, DEFAULTS.todo_show_completed),
     show_history: bool(config.show_history, DEFAULTS.show_history),
+    show_expand: bool(config.show_expand, DEFAULTS.show_expand),
     upload_target: config.upload_target === "media" ? "media" : "image",
     upload_folder: str(config.upload_folder, DEFAULTS.upload_folder),
     upload_max_size: Math.round(num(config.upload_max_size, DEFAULTS.upload_max_size, 0, 8000)),

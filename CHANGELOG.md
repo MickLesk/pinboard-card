@@ -5,6 +5,13 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Enlarged view: pages that do not fit the card get an enlarge button in the
+  footer, a long press opens the same popup unless a hold action is set, and
+  `action: expand` is available for any gesture. The popup shows the card at
+  full size on the current page, with ticking, editing and paging.
+
 ## [1.1.0] - 2026-10-06
 
 ### Added

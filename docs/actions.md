@@ -6,6 +6,7 @@ cards, plus `flip`. A tap turns to the next page unless you say otherwise.
 | `action` | Effect |
 | --- | --- |
 | `flip` | Show the next page. Default for `tap_action`. |
+| `expand` | Open the card enlarged in a popup, on the current page. A long press does this by default when no hold action is set. |
 | `more-info` | Open the more-info dialog. `entity` defaults to the page's `note_entity`, then `image_entity`. |
 | `toggle` | Toggle `entity` (same default). |
 | `navigate` | Go to `navigation_path`. `navigation_replace: true` replaces the history entry. |

@@ -68,6 +68,7 @@ interface FaceView {
   noteFooter: HTMLElement;
   noteMeta: HTMLElement;
   historyButton: HTMLButtonElement;
+  expandButton: HTMLButtonElement;
   historyPanel: HTMLElement;
   toolbarSlot: HTMLElement;
   noteEditor: HTMLElement;
@@ -174,6 +175,7 @@ const FACE_TEMPLATE = `
     <div class="note-footer">
       <div class="note-meta"></div>
       <button class="icon-button history-button hidden" type="button"><ha-icon icon="mdi:history"></ha-icon></button>
+      <button class="icon-button expand-button hidden" type="button"><ha-icon icon="mdi:arrow-expand"></ha-icon></button>
     </div>
   </div>
   <div class="layer layer-audio">
@@ -236,6 +238,9 @@ export class PinboardCard extends HTMLElement {
 
   private readonly _root: ShadowRoot;
   private _config?: NormalizedConfig;
+  private _rawConfig?: PinboardCardConfig;
+  private _expandDialog?: HTMLDialogElement;
+  private _expandedCard?: PinboardCard;
   private _hass?: HomeAssistant;
   private _lang = "en";
   private _index = 0;
@@ -305,10 +310,13 @@ export class PinboardCard extends HTMLElement {
     this._unsubscribeTodo();
     this._stopAudio();
     this._stopRecording(true);
+    this._closeExpanded();
   }
 
   setConfig(config: PinboardCardConfig): void {
     validateConfig(config);
+    this._rawConfig = config;
+    this._closeExpanded();
     this._config = normalizeConfig(config);
     this._stopTimers();
     window.clearTimeout(this._animTimer);
@@ -347,6 +355,7 @@ export class PinboardCard extends HTMLElement {
       this._lang = lang;
       this._applyStrings();
     }
+    if (this._expandedCard) this._expandedCard.hass = hass;
     if (this._tiles) {
       for (const tile of this._tiles) tile.hass = hass;
       return;
@@ -577,6 +586,7 @@ export class PinboardCard extends HTMLElement {
       noteFooter: q(el, ".note-footer"),
       noteMeta: q(el, ".note-meta"),
       historyButton: q(el, ".history-button"),
+      expandButton: q(el, ".expand-button"),
       historyPanel: q(el, ".history-panel"),
       toolbarSlot: q(el, ".md-toolbar-slot"),
       noteEditor: q(el, ".note-editor"),
@@ -689,6 +699,10 @@ export class PinboardCard extends HTMLElement {
         ev.stopPropagation();
         void this._toggleHistory(view);
       });
+      view.expandButton.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this.expand();
+      });
       view.noteBody.addEventListener("scroll", () => this._updateScrollState(view), { passive: true });
     }
 
@@ -769,6 +783,8 @@ export class PinboardCard extends HTMLElement {
       view.editButton.setAttribute("aria-label", t("editNote"));
       view.historyButton.title = t("history");
       view.historyButton.setAttribute("aria-label", t("history"));
+      view.expandButton.title = t("expand");
+      view.expandButton.setAttribute("aria-label", t("expand"));
       view.toolbarSlot.replaceChildren(buildToolbar(view.textarea, t));
       view.cancelButton.textContent = t("cancel");
       view.saveButton.textContent = this._saving ? t("saving") : t("save");
@@ -1764,6 +1780,71 @@ export class PinboardCard extends HTMLElement {
     const atEnd = body.scrollTop + body.clientHeight >= body.scrollHeight - 1;
     view.noteLayer.classList.toggle("scrollable", scrollable);
     view.noteLayer.classList.toggle("at-end", atEnd);
+    const small = (this._els?.stage.clientHeight ?? 0) < 170;
+    view.expandButton.classList.toggle("hidden", !this._expandAllowed() || !(scrollable || small));
+  }
+
+  private _expandAllowed(): boolean {
+    return Boolean(this._config?.show_expand) && !this.hasAttribute("expanded") && !this._tiles;
+  }
+
+  /** Shows a slide without animation; used by the enlarged view to start where the card is. */
+  jumpTo(index: number): void {
+    if (!this._config || this._tiles) return;
+    const total = this._slides().length;
+    if (!total) return;
+    const target = ((Math.trunc(index) % total) + total) % total;
+    if (target === this._index) return;
+    this._go(target, 1, false);
+  }
+
+  /** Opens the card in a popup at full size, starting on the page currently shown. */
+  expand(): void {
+    const raw = this._rawConfig;
+    if (!raw || !this._expandAllowed()) return;
+    this._closeExpanded();
+    const t = (key: string) => translate(this._lang, key);
+    const dialog = document.createElement("dialog");
+    dialog.className = "expand-dialog";
+    const header = document.createElement("div");
+    header.className = "expand-header";
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = this._slide?.title || this._config?.title || "";
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "icon-button";
+    close.title = t("close");
+    close.setAttribute("aria-label", t("close"));
+    close.innerHTML = `<ha-icon icon="mdi:close"></ha-icon>`;
+    close.addEventListener("click", () => this._closeExpanded());
+    header.append(title, close);
+    const body = document.createElement("div");
+    body.className = "expand-body";
+    const inner = document.createElement(CARD_TYPE) as PinboardCard;
+    inner.setAttribute("expanded", "");
+    inner.setConfig({ ...raw, auto_flip: 0, auto_advance: 0, hover_flip: false, ken_burns: false });
+    if (this._hass) inner.hass = this._hass;
+    inner.jumpTo(this._index);
+    body.append(inner);
+    dialog.append(header, body);
+    dialog.addEventListener("click", (ev) => {
+      if (ev.target === dialog) this._closeExpanded();
+    });
+    dialog.addEventListener("close", () => this._closeExpanded());
+    this._root.append(dialog);
+    this._expandDialog = dialog;
+    this._expandedCard = inner;
+    dialog.showModal();
+  }
+
+  private _closeExpanded(): void {
+    const dialog = this._expandDialog;
+    this._expandDialog = undefined;
+    this._expandedCard = undefined;
+    if (!dialog) return;
+    if (dialog.open) dialog.close();
+    dialog.remove();
   }
 
   private _renderNote(view: FaceView, source: NoteSource): void {
@@ -2257,15 +2338,21 @@ export class PinboardCard extends HTMLElement {
         : kind === "double_tap"
           ? (slide.double_tap_action ?? config.double_tap_action)
           : (slide.tap_action ?? config.tap_action);
+    // A long press with nothing configured enlarges the page, which is what a small card needs most.
+    if (kind === "hold" && action.action === "none" && this._expandAllowed()) {
+      this.expand();
+      return;
+    }
     try {
-      const shouldFlip = await runAction(
+      const result = await runAction(
         this,
         this._hass,
         { note_entity: entry.note_entity, image_entity: entry.image_entity },
         action,
         translate(this._lang, "confirm"),
       );
-      if (shouldFlip) this.goTo("next");
+      if (result === "flip") this.goTo("next");
+      else if (result === "expand") this.expand();
     } catch (err) {
       console.warn("Pinboard: action failed", err);
     }

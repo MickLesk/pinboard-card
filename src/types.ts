@@ -8,6 +8,7 @@ export type ExpiredMode = "dim" | "hide";
 
 export type ActionName =
   | "flip"
+  | "expand"
   | "none"
   | "more-info"
   | "navigate"
@@ -155,6 +156,8 @@ export interface PinboardCardConfig extends PageConfig {
   todo_show_completed?: boolean;
   /** History button on notes from entities (recorder and logbook). */
   show_history?: boolean;
+  /** Enlarge button on pages that do not fit, and long press opens the enlarged view. */
+  show_expand?: boolean;
   upload_target?: "image" | "media";
   upload_folder?: string;
   /** Longest edge for uploaded pictures in pixels; 0 keeps originals. */
@@ -202,6 +205,7 @@ export interface NormalizedConfig {
   todo_add: boolean;
   todo_show_completed: boolean;
   show_history: boolean;
+  show_expand: boolean;
   upload_target: "image" | "media";
   upload_folder: string;
   upload_max_size: number;
