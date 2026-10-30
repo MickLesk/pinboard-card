@@ -9,7 +9,7 @@ The card uses your theme's colours. These CSS variables can be overridden with
 | --- | --- |
 | `--pinboard-note-background` | Background of note pages (overridden per page by `color`). |
 | `--pinboard-note-text` | Text colour on tinted note pages. |
-| `--pinboard-sticky-color` | Paper colour of `note_style: sticky`. |
+| `--pinboard-sticky-color` | Paper colour of `note_style: sticky` when `sticky_color` is not set. |
 | `--pinboard-badge-background`, `--pinboard-badge-color` | The corner badge on pictures. |
 | `--pinboard-placeholder-background` | Background when no picture is set. |
 | `--pinboard-radius` | Corner radius, defaults to `--ha-card-border-radius`. |

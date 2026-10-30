@@ -85,8 +85,8 @@ ha-card {
 .face.hidden-face {
   visibility: hidden;
 }
-.face.tinted .layer-note,
-.face.custom-text .layer-note {
+.face.kind-note.tinted .layer-note,
+.face.kind-note.custom-text .layer-note {
   color: var(--pinboard-note-text, var(--primary-text-color));
 }
 .face.tinted .note-header ha-icon,
@@ -100,6 +100,11 @@ ha-card {
   --pinboard-note-background: var(--pinboard-sticky-color, #fff3a8);
   --pinboard-note-text: #2b2b2b;
   box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.08);
+}
+:host([dark]) .face.sticky.kind-note {
+  --pinboard-note-background: var(--pinboard-sticky-color, #5c4d14);
+  --pinboard-note-text: #f3eed9;
+  box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.08);
 }
 .face.sticky.kind-note .layer-note {
   color: var(--pinboard-note-text);
@@ -584,6 +589,23 @@ ha-card {
 }
 .note-body .note-empty {
   color: var(--secondary-text-color);
+}
+.note-body .qr {
+  display: flex;
+  justify-content: center;
+  height: min(100%, 260px);
+  margin: 2px 0 10px;
+}
+.note-body .qr svg {
+  height: 100%;
+  max-width: 100%;
+  aspect-ratio: 1;
+  border-radius: 8px;
+  background: #fff;
+}
+.note-body .qr.qr-error {
+  color: var(--error-color, #c62828);
+  font-size: 0.9em;
 }
 .checklist {
   display: flex;

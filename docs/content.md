@@ -120,10 +120,49 @@ slides:
 ### Colours and sticky notes
 
 `color` tints a note page: `yellow`, `green`, `blue`, `pink`, `orange`,
-`purple`, `grey` or any CSS colour. Text switches to light or dark to stay
-readable; `text_color` overrides that with `light`, `dark` or any CSS colour.
+`purple`, `grey` or any CSS colour. The presets come in two shades: a light
+one for light themes and a muted one while Home Assistant runs a dark theme,
+so a tinted page never glows on a dark dashboard. Text switches to light or
+dark to stay readable; `text_color` overrides that with `light`, `dark` or
+any CSS colour. A CSS colour of your own is used as given in both themes.
+
 `note_style: sticky` on the card gives all notes a paper tint and a folded
-corner.
+corner. The paper is yellow in light themes and ochre in dark ones;
+`sticky_color` picks another preset or any CSS colour for all sticky notes,
+and `color` on a page still wins over it.
+
+```yaml
+type: custom:pinboard-card
+note_style: sticky
+sticky_color: blue
+slides:
+  - note: "Takes the sticky colour."
+  - note: "Has its own tint."
+    color: pink
+```
+
+### QR codes
+
+`qr` draws a QR code on a note page, above the note text. Use it for the
+guest Wi-Fi, a link to a manual or anything else people would otherwise type
+from the screen. An entry with only `qr` is a QR page of its own.
+
+```yaml
+type: custom:pinboard-card
+slides:
+  - image: /local/pinboard/hallway.jpg
+  - qr: "WIFI:T:WPA;S:Guest;P:correct-horse-battery;;"
+    note: "Scan to join the guest Wi-Fi."
+    color: blue
+```
+
+The Wi-Fi format is `WIFI:T:<WPA|WEP|nopass>;S:<network>;P:<password>;;`.
+Escape `;`, `:` and `\` in the network name or password with a backslash.
+`qr_entity` takes the content from an entity's state instead, for example an
+`input_text` holding a link that an automation updates. While the state is
+empty, unknown or unavailable the page shows only the note text. The code is
+always drawn black on white with a quiet zone, so it scans on every page
+colour; content longer than about 2300 bytes is refused with a message.
 
 ### History
 

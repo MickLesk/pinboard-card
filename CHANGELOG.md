@@ -5,6 +5,20 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- QR codes on note pages: `qr` draws a code above the note text, for the
+  guest Wi-Fi, a link or any text, and `qr_entity` takes the content from an
+  entity. An entry with only `qr` is a QR page.
+- `sticky_color` picks the paper colour of sticky notes, in the editor under
+  "Appearance".
+
+### Changed
+
+- Colour presets and the sticky paper follow the theme: in dark themes a
+  muted shade with light text replaces the pastel tints, so tinted pages no
+  longer glow on dark dashboards. Custom CSS colours are used as given.
+
 ## [1.2.1] - 2026-10-30
 
 ### Fixed

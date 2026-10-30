@@ -11,7 +11,7 @@ const checks = [
   ["defines pinboard-card-editor", bundle.includes('"pinboard-card-editor"')],
   ["registers in window.customCards", bundle.includes("customCards")],
   ["no leftover __VERSION__ placeholder", !bundle.includes("__VERSION__")],
-  ["bundle below 220 kB", bundle.length < 220_000],
+  ["bundle below 260 kB", bundle.length < 260_000],
 ];
 
 let failed = false;

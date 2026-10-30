@@ -60,6 +60,7 @@ export const DEFAULTS: Omit<NormalizedConfig, "type" | "entries" | "slides"> = {
   show_updated: true,
   show_navigation: true,
   note_style: "plain",
+  sticky_color: "",
   expired_slides: "dim",
   checklist: true,
   checklist_writeback: true,

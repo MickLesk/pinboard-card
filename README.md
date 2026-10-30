@@ -232,9 +232,13 @@ slides:
     note_attribute: ""                       # read an attribute instead of the state (read-only)
   - todo_entity: todo.garage                 # a to-do list as a checklist page
     note: "Before the weekend:"              # optional text above the list
-    color: yellow                            # yellow, green, blue, pink, orange, purple, grey or any CSS colour
+    color: yellow                            # yellow, green, blue, pink, orange, purple, grey or any CSS colour;
+                                             # presets get a darker shade in dark themes
     text_color: auto                         # auto (contrast to the page colour), light, dark or any CSS colour
     expires: "2026-10-01 18:00"              # afterwards dimmed and tagged, or hidden (expired_slides)
+  - qr: "WIFI:T:WPA;S:Guest;P:secret;;"      # a QR code above the note text: Wi-Fi, a link or any text
+    note: "Guest Wi-Fi"
+  - qr_entity: input_text.share_link         # QR content from an entity's state
   - audio: media-source://media_source/local/pinboard/memo.webm   # a recording or any audio file
     title: Voice memo
   - audio_entity: input_text.garage_memo     # audio from an entity; record button on the card
@@ -270,6 +274,7 @@ show_hint: true                    # the "Note" / "Photo" / "Audio" badge in the
 show_navigation: true              # arrows and dots when there are more than two pages
 show_updated: true                 # "Updated 5 minutes ago" for notes and recordings from entities
 note_style: plain                  # plain | sticky
+sticky_color: ""                   # paper colour of sticky notes: preset name or CSS colour (default: yellow, ochre in dark themes)
 expired_slides: dim                # dim: greyed out with an "Expired" tag | hide: removed from the sequence
 
 # --- notes and to-do lists -------------------------------------------------
@@ -331,6 +336,7 @@ double_tap_action:
 | `show_navigation` | `true` | Arrows and dots when there are more than two pages. Swiping and the arrow keys always work. |
 | `show_updated` | `true` | "Updated … ago" for notes and recordings that come from an entity. |
 | `note_style` | `plain` | `plain` or `sticky`. Sticky notes get a paper tint and a folded corner. |
+| `sticky_color` | – | Paper colour of sticky notes: a preset name (`yellow`, `green`, …) or any CSS colour. Without it the paper is yellow in light themes and ochre in dark ones. |
 | `expired_slides` | `dim` | What happens to pages past their `expires`: `dim` keeps them greyed out with an "Expired" tag, `hide` removes them from the sequence. |
 | `checklist` | `true` | Lines like `- [ ] item` become checkboxes. Ticks are saved for notes from an `input_text` / `text` entity; in notes from the card config the boxes are read-only. |
 | `checklist_writeback` | `true` | Save ticks on notes from an `input_text` or `text` entity to the entity. |
@@ -366,8 +372,10 @@ string is treated as `image`.
 | `audio` | – | URL or `media-source://` id of an audio file. |
 | `audio_entity` | – | Audio from an `input_text` / `text` entity whose state is the audio address. Gets a record button. |
 | `expires` | – | `2026-10-01` or `2026-10-01 18:00`. Until then the footer shows "Until …"; afterwards the page is dimmed or hidden. |
-| `color` | – | Tint of a note page: `yellow`, `green`, `blue`, `pink`, `orange`, `purple`, `grey` or any CSS colour. |
+| `color` | – | Tint of a note page: `yellow`, `green`, `blue`, `pink`, `orange`, `purple`, `grey` or any CSS colour. Presets switch to a darker shade while Home Assistant uses a dark theme. |
 | `text_color` | `auto` | Text on a note page: `auto` picks dark or light for contrast with `color`, `light` and `dark` force it, any CSS colour works too. |
+| `qr` | – | Draws a QR code on the note page above the text: a link, a Wi-Fi string (`WIFI:T:WPA;S:name;P:password;;`) or any text. An entry with only `qr` is a QR page. |
+| `qr_entity` | – | The QR content comes from this entity's state instead; an empty state shows no code. |
 | `markers` | – | A list of pins on the picture. See [Marker](#marker). |
 | `kind` | – | `image`, `note` or `audio`. Only needed for an entry that has no content yet; the editor sets it. |
 | `visible` | – | One condition or a list: `{ entity, state }`, `{ entity, state_not }` or `{ entity, attribute, state }`. `state` may be a list. Without `state` the page shows whenever the entity is available. The page is only part of the sequence while every condition holds. |

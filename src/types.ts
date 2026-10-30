@@ -81,6 +81,10 @@ export interface PageConfig {
   color?: string;
   /** Text on a note page: auto (contrast to the tint), light, dark or any CSS colour. */
   text_color?: string;
+  /** Content of a QR code shown on the note page: a URL, a Wi-Fi string (WIFI:T:WPA;S:…;P:…;;) or any text. */
+  qr?: string;
+  /** An entity whose state is the QR content. */
+  qr_entity?: string;
   /** Pins on the picture with a label: "here is the stopcock". */
   markers?: MarkerConfig[];
   /** A voice memo or any audio file: URL or media-source id. */
@@ -106,6 +110,8 @@ export interface NormalizedPage {
   expires: string;
   color: string;
   text_color: string;
+  qr: string;
+  qr_entity: string;
   markers: Marker[];
   audio: string | MediaValue | undefined;
   audio_entity: string;
@@ -147,6 +153,8 @@ export interface PinboardCardConfig extends PageConfig {
   show_updated?: boolean;
   show_navigation?: boolean;
   note_style?: NoteStyle;
+  /** Paper colour of sticky notes: a preset name or any CSS colour. */
+  sticky_color?: string;
   expired_slides?: ExpiredMode;
   checklist?: boolean;
   checklist_writeback?: boolean;
@@ -199,6 +207,7 @@ export interface NormalizedConfig {
   show_updated: boolean;
   show_navigation: boolean;
   note_style: NoteStyle;
+  sticky_color: string;
   expired_slides: ExpiredMode;
   checklist: boolean;
   checklist_writeback: boolean;
@@ -230,6 +239,7 @@ export interface HomeAssistant {
   states: Record<string, HassEntity>;
   language?: string;
   locale?: { language?: string };
+  themes?: { darkMode?: boolean };
   callService(
     domain: string,
     service: string,

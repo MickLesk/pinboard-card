@@ -252,6 +252,13 @@ const en: Strings = {
   fit_cover: "Fill (crop)",
   fit_contain: "Fit (letterbox)",
   ratio_auto: "Natural picture size",
+  editor_qr: "QR code (optional)",
+  editor_qr_help: "A link, a Wi-Fi string such as WIFI:T:WPA;S:name;P:password;; or any text. The code is drawn on the page above the note text.",
+  editor_qr_entity: "QR code from an entity (optional)",
+  editor_sticky_color: "Sticky paper colour",
+  editor_sticky_color_help: "Presets switch to a darker shade in dark themes. Any CSS colour works too.",
+  sticky_color_default: "Default (yellow)",
+  qrInvalid: "This text is too long for a QR code.",
 };
 
 const de: Strings = {
@@ -504,6 +511,13 @@ const de: Strings = {
   fit_cover: "Füllen (zuschneiden)",
   fit_contain: "Einpassen (Ränder)",
   ratio_auto: "Natürliche Bildgröße",
+  editor_qr: "QR-Code (optional)",
+  editor_qr_help: "Ein Link, ein WLAN-String wie WIFI:T:WPA;S:Name;P:Passwort;; oder beliebiger Text. Der Code steht auf der Seite über dem Notiztext.",
+  editor_qr_entity: "QR-Code aus einer Entität (optional)",
+  editor_sticky_color: "Papierfarbe der Haftnotizen",
+  editor_sticky_color_help: "Vorgaben wechseln in dunklen Themes zu einem dunkleren Ton. Jede CSS-Farbe geht ebenfalls.",
+  sticky_color_default: "Standard (gelb)",
+  qrInvalid: "Dieser Text ist zu lang für einen QR-Code.",
 };
 
 const nl: Strings = {
@@ -754,6 +768,13 @@ const nl: Strings = {
   editor_note_editor_help: "Gewone tekst werkt zonder meer. De knoppen voegen opmaak toe; het voorbeeld laat zien hoe de notitie eruit komt te zien.",
   editor_auto_advance: "Volgende foto elke",
   editor_auto_advance_help: "0 schakelt de diavoorstelling uit.",
+  editor_qr: "QR-code (optioneel)",
+  editor_qr_help: "Een link, een wifi-string zoals WIFI:T:WPA;S:naam;P:wachtwoord;; of willekeurige tekst. De code staat op de pagina boven de notitietekst.",
+  editor_qr_entity: "QR-code uit een entiteit (optioneel)",
+  editor_sticky_color: "Papierkleur van plaknotities",
+  editor_sticky_color_help: "Voorinstellingen schakelen in donkere thema's naar een donkerdere tint. Elke CSS-kleur werkt ook.",
+  sticky_color_default: "Standaard (geel)",
+  qrInvalid: "Deze tekst is te lang voor een QR-code.",
 };
 
 const fr: Strings = {
@@ -1004,6 +1025,13 @@ const fr: Strings = {
   editor_note_editor_help: "Le texte brut fonctionne tel quel. Les boutons ajoutent la mise en forme ; l'aperçu montre le rendu de la note.",
   editor_auto_advance: "Image suivante toutes les",
   editor_auto_advance_help: "0 désactive le diaporama.",
+  editor_qr: "Code QR (facultatif)",
+  editor_qr_help: "Un lien, une chaîne Wi-Fi comme WIFI:T:WPA;S:nom;P:motdepasse;; ou n'importe quel texte. Le code s'affiche sur la page au-dessus du texte de la note.",
+  editor_qr_entity: "Code QR depuis une entité (facultatif)",
+  editor_sticky_color: "Couleur du papier des notes adhésives",
+  editor_sticky_color_help: "Les préréglages passent à une teinte plus sombre dans les thèmes sombres. Toute couleur CSS fonctionne aussi.",
+  sticky_color_default: "Par défaut (jaune)",
+  qrInvalid: "Ce texte est trop long pour un code QR.",
 };
 
 const es: Strings = {
@@ -1254,6 +1282,13 @@ const es: Strings = {
   editor_note_editor_help: "El texto sin formato funciona tal cual. Los botones añaden formato; la vista previa muestra cómo quedará la nota.",
   editor_auto_advance: "Siguiente imagen cada",
   editor_auto_advance_help: "0 desactiva la presentación.",
+  editor_qr: "Código QR (opcional)",
+  editor_qr_help: "Un enlace, una cadena Wi-Fi como WIFI:T:WPA;S:nombre;P:contraseña;; o cualquier texto. El código se muestra en la página encima del texto de la nota.",
+  editor_qr_entity: "Código QR desde una entidad (opcional)",
+  editor_sticky_color: "Color del papel de las notas adhesivas",
+  editor_sticky_color_help: "Los ajustes predefinidos cambian a un tono más oscuro en temas oscuros. Cualquier color CSS también funciona.",
+  sticky_color_default: "Predeterminado (amarillo)",
+  qrInvalid: "Este texto es demasiado largo para un código QR.",
 };
 
 const LOCALES: Record<string, Strings> = { en, de, nl, fr, es };

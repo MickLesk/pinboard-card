@@ -133,7 +133,7 @@
   <section aria-labelledby="showcase-title">
     <div class="section-heading">
       <h2 id="showcase-title">Small cards. Useful everyday things.</h2>
-      <p>Six ways to use Pinboard, without building a dashboard from scratch.</p>
+      <p>Seven ways to use Pinboard, without building a dashboard from scratch.</p>
     </div>
     <div class="grid" id="showcase"></div>
   </section>
@@ -262,6 +262,7 @@
       states: { ...states },
       language,
       locale: { language },
+      themes: { darkMode: document.body.classList.contains("dark") },
       async callService(domain, service, data) {
         await new Promise((r) => setTimeout(r, 400));
         if (domain === "todo" && service === "update_item") {
@@ -389,6 +390,8 @@
         { note: "Always shown too." },
       ] } },
       { label: "Hold → more-info, double tap → URL", config: { type: "custom:pinboard-card", title: "Actions", image: "./garden.jpg", note_entity: "input_text.fridge_note", hold_action: { action: "more-info" }, double_tap_action: { action: "url", url_path: "https://example.com" } } },
+      { label: "QR code page from the config, dark sticky paper", config: { type: "custom:pinboard-card", title: "Guest Wi-Fi", image: "./kitchen.jpg", note_style: "sticky", sticky_color: "blue", default_side: "note", qr: "WIFI:T:WPA;S:Pinboard Guest;P:correct-horse-battery;;", note: "Scan to join the guest network." } },
+      { label: "QR code from an input_text (empty entity shows nothing)", config: { type: "custom:pinboard-card", title: "Link", qr_entity: "input_text.fridge_note", note: "The code follows the entity." } },
     ];
     window.__events = [];
     document.addEventListener("hass-more-info", (ev) => window.__events.push({ type: "hass-more-info", detail: ev.detail }));
@@ -454,6 +457,7 @@
         { x: 72, y: 30, label: "Clamps" },
       ], note: "Keep these tools in their marked places." } },
       { title: "Leave a voice memo", help: "A photo, a note and an audio page in one card. The demo player uses a silent sample.", config: configs[16].config },
+      { title: "Share the Wi-Fi", help: "Guests scan the code instead of typing the password. The note keeps the plain text next to it.", config: { type: "custom:pinboard-card", title: "Guest Wi-Fi", qr: "WIFI:T:WPA;S:Pinboard Guest;P:correct-horse-battery;;", note: "Network **Pinboard Guest**, password on request.", color: "blue" } },
     ];
     for (const { title, help, config } of showcase) {
       const cell = document.createElement("article");
@@ -476,6 +480,7 @@
       const dark = document.body.classList.toggle("dark");
       event.currentTarget.setAttribute("aria-pressed", String(dark));
       event.currentTarget.textContent = dark ? "Light theme" : "Dark theme";
+      push();
     });
     document.getElementById("lang").addEventListener("click", () => { language = language === "en" ? "de" : "en"; push(); });
     document.getElementById("flipall").addEventListener("click", () => cards.forEach((c) => c.flip()));

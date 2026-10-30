@@ -38,7 +38,7 @@ const UPLOAD_TARGETS = ["image", "media"];
 const EDITOR_DEFAULTS: Record<string, unknown> = {};
 const PAGE_KEYS: Array<keyof PageConfig> = [
   "kind", "title", "image", "image_entity", "note", "note_entity", "note_attribute", "todo_entity",
-  "expires", "color", "text_color", "markers", "audio", "audio_entity", "visible", "tap_action", "hold_action", "double_tap_action",
+  "expires", "color", "text_color", "qr", "qr_entity", "markers", "audio", "audio_entity", "visible", "tap_action", "hold_action", "double_tap_action",
 ];
 type EntryKind = "image" | "note" | "audio" | "both";
 type TemplateKind = "shopping" | "family" | "maintenance";
@@ -1405,6 +1405,8 @@ export class PinboardCardEditor extends HTMLElement {
             selector: { attribute: {} },
             context: { filter_entity: "note_entity" },
           },
+          { name: "qr", selector: { text: {} } },
+          { name: "qr_entity", selector: { entity: {} } },
         ]),
       );
     }
@@ -1517,6 +1519,19 @@ export class PinboardCardEditor extends HTMLElement {
         ]),
         grid("appearance_notes", [
           { name: "note_style", selector: { select: { mode: "dropdown", options: options(NOTE_STYLES, "note_style") } } },
+          {
+            name: "sticky_color",
+            selector: {
+              select: {
+                mode: "dropdown",
+                custom_value: true,
+                options: [
+                  { value: "", label: t("sticky_color_default") },
+                  ...Object.keys(NOTE_COLOR_PRESETS).map((name) => ({ value: name, label: t(`color_${name}`) })),
+                ],
+              },
+            },
+          },
           { name: "expired_slides", selector: { select: { mode: "dropdown", options: options(EXPIRED_MODES, "expired") } } },
         ]),
       ]),

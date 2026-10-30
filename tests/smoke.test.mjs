@@ -40,7 +40,7 @@ const card = (page, index) => page.locator("#grid > .cell > pinboard-card").nth(
 
 test("demo renders every card without page errors", async () => {
   const { page, context, errors } = await openDemo();
-  assert.equal(await page.locator("#grid > .cell > pinboard-card").count(), 20);
+  assert.equal(await page.locator("#grid > .cell > pinboard-card").count(), 22);
   assert.deepEqual(errors, []);
   assert.equal(await card(page, 0).locator(".face.current .title-overlay").innerText(), "Kitchen");
   assert.equal(await card(page, 0).locator(".stage").getAttribute("aria-pressed"), "false");
@@ -352,6 +352,23 @@ test("expired pages are dimmed or hidden, colours and expiry dates show", async 
   await page.waitForTimeout(800);
   const text = await cur().evaluate((el) => getComputedStyle(el).getPropertyValue("--pinboard-note-text").trim());
   assert.equal(text, "#ffffff");
+
+  // Presets follow the theme: a dark theme gets the dark variant and light text.
+  await boiler.locator(".dots button").nth(3).click();
+  await page.waitForTimeout(800);
+  const dark = await boiler.evaluate((el) => {
+    el.hass = { ...el.hass, themes: { darkMode: true } };
+    const face = el.shadowRoot.querySelector(".face.current");
+    const style = getComputedStyle(face);
+    return [el.hasAttribute("dark"), style.getPropertyValue("--pinboard-note-background").trim(), style.getPropertyValue("--pinboard-note-text").trim()];
+  });
+  assert.deepEqual(dark, [true, "#1f4d2a", "#ffffff"]);
+  const light = await boiler.evaluate((el) => {
+    el.hass = { ...el.hass, themes: { darkMode: false } };
+    const face = el.shadowRoot.querySelector(".face.current");
+    return [el.hasAttribute("dark"), getComputedStyle(face).getPropertyValue("--pinboard-note-background").trim()];
+  });
+  assert.deepEqual(light, [false, "#d4f5cd"]);
 
   const hidden = await page.evaluate(() => {
     const el = document.createElement("pinboard-card");
@@ -703,6 +720,48 @@ test("small cards enlarge into a popup from the footer button or a long press", 
   await context.close();
 });
 
+test("QR code pages draw a scannable code and sticky paper follows sticky_color and the theme", async () => {
+  const { page, context } = await openDemo();
+  const count = await page.locator("#grid > .cell > pinboard-card").count();
+  const wifi = card(page, count - 2);
+  await wifi.scrollIntoViewIfNeeded();
+  const cur = () => wifi.locator(".face.current");
+  await cur().locator(".qr svg").waitFor();
+  assert.equal(await cur().locator(".qr svg").getAttribute("aria-label"), "WIFI:T:WPA;S:Pinboard Guest;P:correct-horse-battery;;");
+  assert.match(await cur().locator(".note-body").innerText(), /Scan to join/);
+  assert.equal(await cur().evaluate((el) => getComputedStyle(el).getPropertyValue("--pinboard-note-background").trim()), "#d6ebff");
+  const darkPaper = await wifi.evaluate((el) => {
+    el.hass = { ...el.hass, themes: { darkMode: true } };
+    return getComputedStyle(el.shadowRoot.querySelector(".face.current")).getPropertyValue("--pinboard-note-background").trim();
+  });
+  assert.equal(darkPaper, "#1e3a5c");
+
+  // The entity-bound code appears once the entity has a value and vanishes with it.
+  const bound = card(page, count - 1);
+  await bound.scrollIntoViewIfNeeded();
+  assert.equal(await bound.locator(".face.current .qr svg").count(), 1);
+  await bound.evaluate((el) => {
+    const states = { ...el.hass.states, "input_text.fridge_note": { ...el.hass.states["input_text.fridge_note"], state: "" } };
+    el.hass = { ...el.hass, states };
+  });
+  assert.equal(await bound.locator(".face.current .qr").count(), 0);
+
+  // A default sticky note turns to dark paper with light text in dark themes.
+  const sticky = await page.evaluate(() => {
+    const el = document.createElement("pinboard-card");
+    el.setConfig({ type: "custom:pinboard-card", note: "x", note_style: "sticky" });
+    document.body.append(el);
+    const face = () => el.shadowRoot.querySelector(".face.current");
+    const before = getComputedStyle(face()).getPropertyValue("--pinboard-note-background").trim();
+    el.hass = { states: {}, themes: { darkMode: true }, callService: async () => {}, callWS: async () => ({}) };
+    const after = [getComputedStyle(face()).getPropertyValue("--pinboard-note-background").trim(), getComputedStyle(face()).getPropertyValue("--pinboard-note-text").trim()];
+    el.remove();
+    return { before, after };
+  });
+  assert.deepEqual(sticky, { before: "#fff3a8", after: ["#5c4d14", "#ffffff"] });
+  await context.close();
+});
+
 test("empty and broken states show placeholders", async () => {
   const { page, context } = await openDemo();
   assert.match(await card(page, 5).locator(".face.current .placeholder").innerText(), /No picture yet/);
@@ -763,7 +822,7 @@ test("the editor emits config-changed", async () => {
 
 test("the public demo separates the showcase from technical fixtures", async () => {
   const { page, context, errors, failedResources } = await openDemo({ technical: false });
-  assert.equal(await page.locator("#showcase > .cell > pinboard-card").count(), 6);
+  assert.equal(await page.locator("#showcase > .cell > pinboard-card").count(), 7);
   assert.equal(await page.locator("#technical-tests").getAttribute("open"), null);
   assert.equal(await page.locator("#grid").isVisible(), false);
   assert.equal(await page.locator("ha-form pre").count(), 0);

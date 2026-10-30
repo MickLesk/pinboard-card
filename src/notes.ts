@@ -78,20 +78,27 @@ export function isExpired(value: string, now = new Date()): boolean {
 }
 
 /** Tints for note pages. Names map to gentle paper colours; any CSS colour works too. */
-export const NOTE_COLOR_PRESETS: Record<string, string> = {
-  yellow: "#fff3a8",
-  green: "#d4f5cd",
-  blue: "#d6ebff",
-  pink: "#ffd9e6",
-  orange: "#ffe0b8",
-  purple: "#e6dcff",
-  grey: "#e9e9ee",
+/** Light and dark variants of the colour presets; the dark one is used while Home Assistant runs a dark theme. */
+export const NOTE_COLOR_PRESETS: Record<string, { light: string; dark: string }> = {
+  yellow: { light: "#fff3a8", dark: "#5c4d14" },
+  green: { light: "#d4f5cd", dark: "#1f4d2a" },
+  blue: { light: "#d6ebff", dark: "#1e3a5c" },
+  pink: { light: "#ffd9e6", dark: "#5c2a3d" },
+  orange: { light: "#ffe0b8", dark: "#5c3a14" },
+  purple: { light: "#e6dcff", dark: "#3b2a5c" },
+  grey: { light: "#e9e9ee", dark: "#3a3a42" },
 };
 
-export function resolveNoteColor(value: string): string | null {
+/** Paper colour of sticky notes when no sticky_color is set. */
+export const STICKY_COLOR = NOTE_COLOR_PRESETS.yellow;
+
+/** A preset name becomes the variant for the current theme; anything else is taken as a CSS colour. */
+export function resolveNoteColor(value: string, dark = false): string | null {
   const text = value.trim().toLowerCase();
   if (!text) return null;
-  return NOTE_COLOR_PRESETS[text] ?? value.trim();
+  const preset = NOTE_COLOR_PRESETS[text];
+  if (preset) return dark ? preset.dark : preset.light;
+  return value.trim();
 }
 
 /** Resolves the text_color option: auto → contrast to the tint, light/dark → fixed, anything else → as given. */

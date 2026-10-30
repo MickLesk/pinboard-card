@@ -30,8 +30,10 @@ import {
   parseNoteBlocks,
   resolveNoteColor,
   resolveTextColor,
+  STICKY_COLOR,
   toggleChecklistLine,
 } from "./notes";
+import { qrModules, qrSvg } from "./qr";
 import type {
   HassEntity,
   HomeAssistant,
@@ -130,6 +132,8 @@ interface NoteSource {
   domain: string;
   changed: string;
   entityId: string;
+  /** Content of the QR code on the page, empty when there is none. */
+  qr: string;
 }
 
 interface ResolvedImage {
@@ -243,6 +247,7 @@ export class PinboardCard extends HTMLElement {
   private _expandedCard?: PinboardCard;
   private _hass?: HomeAssistant;
   private _lang = "en";
+  private _dark = typeof matchMedia === "function" && matchMedia("(prefers-color-scheme: dark)").matches;
   private _index = 0;
   private _current: 0 | 1 = 0;
   private _angle = 0;
@@ -318,6 +323,7 @@ export class PinboardCard extends HTMLElement {
     this._rawConfig = config;
     this._closeExpanded();
     this._config = normalizeConfig(config);
+    this.toggleAttribute("dark", this._dark);
     this._stopTimers();
     window.clearTimeout(this._animTimer);
     this._gestures?.destroy();
@@ -355,6 +361,12 @@ export class PinboardCard extends HTMLElement {
       this._lang = lang;
       this._applyStrings();
     }
+    const dark = hass.themes?.darkMode ?? this._dark;
+    if (dark !== this._dark) {
+      this._dark = dark;
+      this.toggleAttribute("dark", dark);
+      if (this._els && this._slide.kind !== "image") this._applyNoteColor(this._currentFace, this._slide);
+    }
     if (this._expandedCard) this._expandedCard.hass = hass;
     if (this._tiles) {
       for (const tile of this._tiles) tile.hass = hass;
@@ -374,7 +386,7 @@ export class PinboardCard extends HTMLElement {
   private _watchedChanged(previous: HomeAssistant, next: HomeAssistant): boolean {
     if (previous.states === next.states) return false;
     const slide = this._slide;
-    const ids = [slide.note_entity, slide.image_entity, slide.audio_entity, slide.todo_entity, ...slide.markers.map((m) => m.entity)];
+    const ids = [slide.note_entity, slide.image_entity, slide.audio_entity, slide.todo_entity, slide.qr_entity, ...slide.markers.map((m) => m.entity)];
     for (const other of this._config?.slides ?? []) {
       for (const condition of other.visible) ids.push(condition.entity);
     }
@@ -1076,17 +1088,19 @@ export class PinboardCard extends HTMLElement {
 
   private _applyNoteColor(view: FaceView, slide: Slide): void {
     const config = this._config;
-    const color = resolveNoteColor(slide.color);
+    const dark = this._dark;
+    const color = resolveNoteColor(slide.color, dark);
     const sticky = config?.note_style === "sticky";
     view.el.classList.toggle("sticky", sticky);
-    const text = resolveTextColor(slide.text_color, color ?? (sticky ? "#fff3a8" : null));
-    if (color) {
-      view.el.style.setProperty("--pinboard-note-background", color);
-      view.el.classList.add("tinted");
+    const paper = sticky ? resolveNoteColor(config?.sticky_color ?? "", dark) : null;
+    const text = resolveTextColor(slide.text_color, color ?? paper ?? (sticky ? (dark ? STICKY_COLOR.dark : STICKY_COLOR.light) : null));
+    const background = color ?? paper;
+    if (background) {
+      view.el.style.setProperty("--pinboard-note-background", background);
     } else {
       view.el.style.removeProperty("--pinboard-note-background");
-      view.el.classList.remove("tinted");
     }
+    view.el.classList.toggle("tinted", Boolean(color));
     if (text) {
       view.el.style.setProperty("--pinboard-note-text", text);
     } else {
@@ -1616,6 +1630,31 @@ export class PinboardCard extends HTMLElement {
     if (recorder.state !== "inactive") recorder.stop();
   }
 
+  /** The QR content of a page: the entity's state when qr_entity is set, otherwise the configured text. */
+  private _qrContent(slide: Slide): string {
+    if (slide.qr_entity) {
+      const entity = this._hass?.states[slide.qr_entity];
+      if (!entity || entity.state === "unknown" || entity.state === "unavailable") return "";
+      return entity.state;
+    }
+    return slide.qr;
+  }
+
+  private _qrElement(text: string): HTMLElement {
+    const box = document.createElement("div");
+    box.className = "qr";
+    const modules = qrModules(text);
+    if (!modules) {
+      box.classList.add("qr-error");
+      box.textContent = translate(this._lang, "qrInvalid");
+      return box;
+    }
+    const svg = qrSvg(modules);
+    svg.setAttribute("aria-label", text);
+    box.append(svg);
+    return box;
+  }
+
   private _noteSource(slide: Slide): NoteSource {
     const config = this._config;
     const empty: NoteSource = {
@@ -1629,6 +1668,7 @@ export class PinboardCard extends HTMLElement {
       domain: "",
       changed: "",
       entityId: "",
+      qr: this._qrContent(slide),
     };
     if (!config) return empty;
     if (slide.todo_entity) {
@@ -1669,6 +1709,7 @@ export class PinboardCard extends HTMLElement {
       raw: text,
       templated: false,
       todo: "",
+      qr: empty.qr,
       editable: !attr && NOTE_ENTITY_DOMAINS.includes(domain),
       error: "",
       max,
@@ -1738,6 +1779,7 @@ export class PinboardCard extends HTMLElement {
       last.max === source.max &&
       last.changed === source.changed &&
       last.entityId === source.entityId &&
+      last.qr === source.qr &&
       (!source.todo || last.todo === source.todo)
     ) {
       return;
@@ -1858,12 +1900,14 @@ export class PinboardCard extends HTMLElement {
       body.append(div);
       return;
     }
+    if (source.qr) body.append(this._qrElement(source.qr));
     if (source.todo) {
       if (source.text.trim()) body.append(this._markdownElement(source.text));
       this._renderTodo(body, source);
       return;
     }
     if (!source.text.trim()) {
+      if (source.qr) return;
       const div = document.createElement("div");
       div.className = "note-empty";
       const strong = document.createElement("span");
