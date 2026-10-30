@@ -12,6 +12,8 @@
   <a href="https://github.com/MickLesk/pinboard-card/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MickLesk/pinboard-card" alt="MIT license"></a>
 </p>
 
+[![Open in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=MickLesk&repository=pinboard-card&category=plugin)
+
 <p align="center">
   <a href="https://micklesk.github.io/pinboard-card/demo/"><strong>Live demo</strong></a>
   &middot; <a href="#installation">Installation</a>
@@ -28,6 +30,9 @@ turns it over with a 3D flip, a crossfade, a slide or a cube rotation. A card
 can hold up to ten pictures, notes and recordings in any order.
 
 ![Picture side, note side and a gallery of several pictures](docs/images/cards.jpg)
+
+
+
 
 <p align="center">
   <img src="docs/images/flip.png" alt="The card halfway through its 3D flip" width="420">
@@ -86,6 +91,8 @@ can hold up to ten pictures, notes and recordings in any order.
 
 Requires **Home Assistant 2024.10 or newer**. Pinboard is a dashboard card,
 not a backend integration. HACS is optional.
+
+[![Open in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=MickLesk&repository=pinboard-card&category=plugin)
 
 ### HACS
 
