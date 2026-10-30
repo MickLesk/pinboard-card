@@ -5,6 +5,13 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- Dutch, French and Spanish were missing the strings for to-do item details,
+  the history panel, the formatting toolbar, text colour, the note editor and
+  the slideshow interval, so those parts showed up in English. A test now
+  checks that every language carries the same strings.
+
 ## [1.2.0] - 2026-10-17
 
 ### Added
