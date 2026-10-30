@@ -12,7 +12,6 @@
   <a href="https://github.com/MickLesk/pinboard-card/blob/main/LICENSE"><img src="https://img.shields.io/github/license/MickLesk/pinboard-card" alt="MIT license"></a>
 </p>
 
-[![Open in Home Assistant Marketplace](https://my.home-assistant.io/badges/marketplace_repository.svg)](https://my.home-assistant.io/redirect/marketplace_repository/?owner=MickLesk&repository=pinboard-card&category=plugin)
 
 <p align="center">
   <a href="https://micklesk.github.io/pinboard-card/demo/"><strong>Live demo</strong></a>
