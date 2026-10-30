@@ -5,6 +5,8 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-10-30
+
 ### Fixed
 
 - Dutch, French and Spanish were missing the strings for to-do item details,
