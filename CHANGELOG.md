@@ -5,6 +5,8 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-10-30
+
 ### Added
 
 - QR codes on note pages: `qr` draws a code above the note text, for the
