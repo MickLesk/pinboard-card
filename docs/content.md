@@ -267,7 +267,9 @@ auto_flip: 15
 ```
 
 Tap, swipe, the arrows, the dots and the arrow keys move between pages;
-`auto_flip` runs a slideshow. Touches that start on a card with more than one
+`auto_flip` runs a slideshow; it waits while a voice memo plays or records,
+while the history is open, while the card is enlarged and while the browser
+tab is hidden. Touches that start on a card with more than one
 page stay inside the card, so dashboards with swipe navigation (for example
 the "swipe-navigation" HACS plugin) do not switch views when you swipe over
 it. `swipe: false` hands those swipes back to the dashboard. With more than two pages, arrows and dots appear

@@ -1044,3 +1044,136 @@ test("templates and setup guidance are localized in every supported language", a
   }
   await context.close();
 });
+
+// A fresh card on the demo page, sharing the demo's simulated Home Assistant.
+async function mountCard(page, config, hassOverride) {
+  await page.evaluate(({ config, hassOverride }) => {
+    document.querySelector("#extra-card")?.remove();
+    const source = document.querySelector("#grid > .cell > pinboard-card");
+    const el = document.createElement("pinboard-card");
+    el.id = "extra-card";
+    el.style.cssText = "display:block;width:360px";
+    el.setConfig(config);
+    el.hass = hassOverride === "reject-templates"
+      ? { ...source.hass, connection: { subscribeMessage: () => Promise.reject(new Error("closed")) } }
+      : source.hass;
+    document.body.prepend(el);
+  }, { config, hassOverride });
+  return page.locator("#extra-card");
+}
+
+const slideTitle = (el) => el.evaluate((card) => card.slide?.title ?? "");
+// The timer keeps going after the awaited page, so wait for it instead of sleeping a fixed time.
+const waitForSlide = (page, title) =>
+  page.waitForFunction((title) => document.querySelector("#extra-card")?.slide?.title === title, title, { timeout: 2000 });
+
+test("auto_advance waits while a memo plays, the history is open or the card is enlarged", async () => {
+  const { page, context } = await openDemo();
+  const wav = await page.evaluate(() => {
+    // Six seconds of silence, long enough to outlast several timer ticks.
+    const rate = 8000, samples = rate * 6;
+    const buf = new ArrayBuffer(44 + samples);
+    const v = new DataView(buf);
+    const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+    str(0, "RIFF"); v.setUint32(4, 36 + samples, true); str(8, "WAVEfmt ");
+    v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+    v.setUint32(24, rate, true); v.setUint32(28, rate, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true);
+    str(36, "data"); v.setUint32(40, samples, true);
+    new Uint8Array(buf, 44).fill(128);
+    let bin = "";
+    new Uint8Array(buf).forEach((b) => (bin += String.fromCharCode(b)));
+    return "data:audio/wav;base64," + btoa(bin);
+  });
+  let el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    auto_advance: 1,
+    slides: [{ audio: wav, title: "Memo" }, { note: "Second page", title: "Second" }, { note: "Third page", title: "Third" }],
+  });
+  const cur = () => el.locator(".face.current");
+  await cur().locator(".audio-play").click();
+  await page.waitForTimeout(300);
+  assert.equal(await cur().locator(".audio-play ha-icon").getAttribute("icon"), "mdi:pause");
+  await page.waitForTimeout(2500);
+  assert.equal(await slideTitle(el), "Memo", "the card stays on the memo while it plays");
+  assert.equal(await cur().locator(".audio-play ha-icon").getAttribute("icon"), "mdi:pause");
+  await cur().locator(".audio-play").click(); // pause
+  await waitForSlide(page, "Second"); // paging resumes once playback stops
+
+  el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    auto_advance: 1,
+    show_history: true,
+    slides: [{ note_entity: "input_text.fridge_note", title: "Fridge" }, { note: "Other", title: "Other" }, { note: "Third", title: "Third" }],
+  });
+  await cur().locator(".history-button").click();
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .history-row").length > 0);
+  await page.waitForTimeout(2500);
+  assert.equal(await slideTitle(el), "Fridge", "the card stays put while the history is open");
+  await cur().locator(".history-button").click();
+  await waitForSlide(page, "Other");
+
+  el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    auto_advance: 1,
+    slides: [{ note: "One", title: "One" }, { note: "Two", title: "Two" }, { note: "Three", title: "Three" }],
+  });
+  await el.evaluate((card) => card.expand());
+  assert.equal(await el.locator("dialog.expand-dialog").evaluate((d) => d.open), true);
+  await page.waitForTimeout(2500);
+  assert.equal(await slideTitle(el), "One", "the card stays put while it is enlarged");
+  await el.locator("dialog .expand-header .icon-button").click();
+  await waitForSlide(page, "Two");
+  await context.close();
+});
+
+test("auto_advance stops in a hidden tab and restarts when it shows again", async () => {
+  const { page, context } = await openDemo();
+  // Five pages, so a timer that kept running could not land back on the first one by chance.
+  const el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    auto_advance: 1,
+    slides: ["One", "Two", "Three", "Four", "Five"].map((title) => ({ note: title, title })),
+  });
+  const setHidden = (hidden) => page.evaluate((hidden) => {
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => hidden });
+    Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (hidden ? "hidden" : "visible") });
+    document.dispatchEvent(new Event("visibilitychange"));
+  }, hidden);
+  await setHidden(true);
+  await page.waitForTimeout(2500);
+  assert.equal(await slideTitle(el), "One", "no paging while the tab is hidden");
+  await setHidden(false);
+  await page.waitForTimeout(400);
+  assert.equal(await slideTitle(el), "One", "a full interval passes before the next page");
+  await waitForSlide(page, "Two");
+  await context.close();
+});
+
+test("a template note whose subscription fails says so instead of staying blank", async () => {
+  const { page, context } = await openDemo();
+  const el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    note: "Boiler: {{ states('sensor.boiler') }}",
+  }, "reject-templates");
+  await el.locator(".stage").click();
+  await page.waitForTimeout(800);
+  await page.waitForFunction(() => /Template error/.test(document.querySelector("#extra-card").shadowRoot.querySelector(".face.current .note-body")?.textContent ?? ""));
+  assert.match(await el.locator(".face.current .note-body").innerText(), /Template error: subscribe failed/);
+  await context.close();
+});
+
+test("status messages scheduled to hide are cancelled when the card is removed", async () => {
+  const { page, context, errors } = await openDemo();
+  const el = await mountCard(page, { type: "custom:pinboard-card", audio_entity: "input_text.memo" });
+  const pending = await el.evaluate((card) => {
+    card._hideLater(() => { window.__hidden = true; }, 200);
+    const before = card._statusTimers.size;
+    card.remove();
+    return { before, after: card._statusTimers.size };
+  });
+  assert.deepEqual(pending, { before: 1, after: 0 });
+  await page.waitForTimeout(400);
+  assert.equal(await page.evaluate(() => window.__hidden ?? false), false);
+  assert.deepEqual(errors, []);
+  await context.close();
+});
