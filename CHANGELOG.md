@@ -5,6 +5,19 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+
+- `auto_advance` and `auto_flip` no longer turn the page while a voice memo
+  plays or records, while the history panel is open or while the card is
+  enlarged. Before, a memo stopped mid-playback at the next tick.
+- Automatic paging stops while the browser tab is hidden and resumes with a
+  full interval when it shows again, so wall panels and background tabs no
+  longer page unseen.
+- A note with a template shows "Template error: subscribe failed" when Home
+  Assistant refuses the template subscription, instead of staying blank.
+- Upload and recording messages no longer try to hide themselves after the
+  card has been removed from the dashboard.
+
 ## [1.3.0] - 2026-10-30
 
 ### Added

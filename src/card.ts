@@ -274,6 +274,8 @@ export class PinboardCard extends HTMLElement {
   private _recordStream?: MediaStream;
   private _recordTimer?: number;
   private _recordStart = 0;
+  /** Timeouts that hide upload and recording messages; cleared when the card leaves the page. */
+  private _statusTimers = new Set<number>();
   private _templateText?: string;
   private _templateResult?: string;
   private _templateError = "";
@@ -293,6 +295,7 @@ export class PinboardCard extends HTMLElement {
 
   connectedCallback(): void {
     this._motionQuery.addEventListener("change", this._onMotionChange);
+    document.addEventListener("visibilitychange", this._onVisibilityChange);
     this._observeResize();
     this._startTimers();
     window.clearInterval(this._metaTimer);
@@ -304,6 +307,9 @@ export class PinboardCard extends HTMLElement {
 
   disconnectedCallback(): void {
     this._motionQuery.removeEventListener("change", this._onMotionChange);
+    document.removeEventListener("visibilitychange", this._onVisibilityChange);
+    this._statusTimers.forEach((timer) => window.clearTimeout(timer));
+    this._statusTimers.clear();
     this._resizeObserver?.disconnect();
     this._resizeObserver = undefined;
     this._stopTimers();
@@ -1150,7 +1156,10 @@ export class PinboardCard extends HTMLElement {
       { type: "render_template", template: raw, timeout: 3, report_errors: true },
     );
     this._templateUnsub.catch(() => {
+      if (this._templateText !== raw) return;
       this._templateError = "subscribe failed";
+      this._lastNote = undefined;
+      this._applyHass();
     });
   }
 
@@ -1383,7 +1392,7 @@ export class PinboardCard extends HTMLElement {
         code === "too_large" ? t("uploadTooLarge") : code === "forbidden" ? t("uploadForbidden") : (err as Error)?.message ?? "";
       view.cameraStatus.textContent = `${t("uploadFailed")}${message ? `: ${message}` : ""}`;
       view.cameraStatus.classList.add("error");
-      window.setTimeout(() => view.cameraStatus.classList.add("hidden"), 6000);
+      this._hideLater(() => view.cameraStatus.classList.add("hidden"), 6000);
     } finally {
       view.camera.disabled = false;
     }
@@ -1553,7 +1562,7 @@ export class PinboardCard extends HTMLElement {
     const Recorder = (window as unknown as { MediaRecorder?: typeof MediaRecorder }).MediaRecorder;
     if (!Recorder || !navigator.mediaDevices?.getUserMedia) {
       showStatus(t("micUnsupported"), true);
-      window.setTimeout(() => view.recordStatus.classList.add("hidden"), 5000);
+      this._hideLater(() => view.recordStatus.classList.add("hidden"), 5000);
       return;
     }
     let stream: MediaStream;
@@ -1561,7 +1570,7 @@ export class PinboardCard extends HTMLElement {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     } catch {
       showStatus(t("micDenied"), true);
-      window.setTimeout(() => view.recordStatus.classList.add("hidden"), 5000);
+      this._hideLater(() => view.recordStatus.classList.add("hidden"), 5000);
       return;
     }
     this._stopAudio();
@@ -1597,7 +1606,7 @@ export class PinboardCard extends HTMLElement {
           const message =
             code === "too_large" ? t("uploadTooLarge") : code === "forbidden" ? t("uploadForbidden") : (err as Error)?.message ?? "";
           showStatus(`${t("uploadFailed")}${message ? `: ${message}` : ""}`, true);
-          window.setTimeout(() => view.recordStatus.classList.add("hidden"), 6000);
+          this._hideLater(() => view.recordStatus.classList.add("hidden"), 6000);
         })
         .finally(() => {
           view.record.disabled = false;
@@ -2431,14 +2440,38 @@ export class PinboardCard extends HTMLElement {
     this._applyMode();
   };
 
+  /** A hidden tab stops the timer; it restarts with a full interval once the page shows again. */
+  private readonly _onVisibilityChange = (): void => {
+    if (document.hidden) this._stopTimers();
+    else this._startTimers();
+  };
+
+  private _hideLater(hide: () => void, ms: number): void {
+    const timer = window.setTimeout(() => {
+      this._statusTimers.delete(timer);
+      hide();
+    }, ms);
+    this._statusTimers.add(timer);
+  }
+
+  /** Automatic paging waits while someone listens, records, reads the history or has the card enlarged. */
+  private _autoPaused(): boolean {
+    if (this._editing || document.hidden) return true;
+    if (this._audio && !this._audio.paused && !this._audio.ended) return true;
+    if (this._recorder) return true;
+    if (this._expandDialog?.open) return true;
+    const face = this._els ? this._currentFace : undefined;
+    return Boolean(face && !face.historyPanel.classList.contains("hidden"));
+  }
+
   private _startTimers(): void {
     this._stopTimers();
     const config = this._config;
-    if (!this.isConnected || !config || this._tiles || !this._els) return;
+    if (!this.isConnected || !config || this._tiles || !this._els || document.hidden) return;
     const seconds = config.auto_flip || config.auto_advance;
     if (seconds > 0 && this._slides().length > 1) {
       this._autoTimer = window.setInterval(() => {
-        if (!this._editing) this.goTo("next");
+        if (!this._autoPaused()) this.goTo("next");
       }, seconds * 1000);
     }
   }

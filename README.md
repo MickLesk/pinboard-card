@@ -327,7 +327,7 @@ double_tap_action:
 | `direction` | `horizontal` | `horizontal` or `vertical`, for `flip`, `slide` and `cube`. |
 | `duration` | `700` | Animation length in milliseconds. |
 | `default_side` | `image` | Start on the first picture (`image`) or the first note (`note`). |
-| `auto_flip` | `0` | Turn to the next page every *n* seconds. `0` disables it. `auto_advance` is an older name. |
+| `auto_flip` | `0` | Turn to the next page every *n* seconds. `0` disables it. Pauses while a memo plays, the history is open, the card is enlarged or the tab is hidden. `auto_advance` is an older name. |
 | `hover_flip` | `false` | Show the next page while the pointer hovers over the card. Mouse devices only. |
 | `swipe` | `true` | Swiping left and right on the card turns pages. The card keeps those touches to itself, so swipe-navigation plugins do not change the view instead. Set to `false` to let swipes over the card reach the dashboard. |
 | `ken_burns` | `false` | Slow zoom and pan on pictures. Off under "reduce motion". |
