@@ -90,6 +90,13 @@ short date, with the time for items due at a time. Overdue items are marked
 in red. `todo_sort: due` lists the open items by due date, earliest first;
 items without one follow in the list's own order.
 
+Lists that keep their own order (Local To-do and most other integrations)
+show a handle in front of every open item. Drag it with the mouse or a
+finger, or focus it and press the up and down arrow keys, to move the item;
+the new order is saved in Home Assistant through `todo/item/move`. The
+handle is hidden with `todo_sort: due`, where the list's order is not
+shown.
+
 ### Checklists in note text
 
 Lines like `- [ ] Bread` and `- [x] Milk` in a note become checkboxes. When

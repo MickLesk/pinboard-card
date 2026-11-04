@@ -1245,3 +1245,43 @@ test("screen readers hear the page a key or tap turned to, but not automatic pag
   assert.equal(await auto.locator(".live").textContent(), "");
   await context.close();
 });
+
+test("open to-do items can be dragged or moved with the arrow keys into a new order", async () => {
+  const { page, context } = await openDemo();
+  await page.evaluate(() => {
+    window.__todoItems.push({ uid: "d4", summary: "Apples", status: "needs_action" });
+  });
+  const el = await mountCard(page, { type: "custom:pinboard-card", todo_entity: "todo.shopping" });
+  const open = () => el.locator(".face.current .checklist").nth(0);
+  const order = async () => (await open().locator(".check > span").allInnerTexts()).map((text) => text.split(" ")[0]);
+  const stored = () => page.evaluate(() => window.__todoItems.filter((i) => i.status !== "completed").map((i) => i.summary.split(" ")[0]));
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .todo-handle").length === 3);
+  assert.deepEqual(await order(), ["Bread", "Coffee", "Apples"]);
+  assert.equal(await el.locator(".face.current .checklist").nth(1).locator(".todo-handle").count(), 0); // completed items stay put
+
+  // Drag Apples above Bread.
+  const handle = open().locator(".todo-handle").nth(2);
+  const from = await handle.boundingBox();
+  const target = await open().locator(".todo-item").nth(0).boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, target.y + 2, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForFunction(() => window.__todoItems.filter((i) => i.status !== "completed")[0].summary === "Apples");
+  assert.deepEqual(await stored(), ["Apples", "Bread", "Coffee"]);
+  assert.deepEqual(await order(), ["Apples", "Bread", "Coffee"]);
+  assert.equal(await el.evaluate((card) => card.slide?.kind), "note"); // the drag did not turn the page
+
+  // Arrow keys move one step and keep the focus on the moved item.
+  await open().locator(".todo-handle").nth(0).focus();
+  await page.keyboard.press("ArrowDown");
+  await page.waitForFunction(() => window.__todoItems.filter((i) => i.status !== "completed")[1].summary === "Apples");
+  assert.deepEqual(await stored(), ["Bread", "Apples", "Coffee"]);
+  assert.equal(await el.evaluate((card) => card.shadowRoot.activeElement?.closest("[data-uid]")?.dataset.uid), "d4");
+
+  // Sorted by due date, the list's own order is not shown, so there is nothing to drag.
+  const sorted = await mountCard(page, { type: "custom:pinboard-card", todo_entity: "todo.shopping", todo_sort: "due" });
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .todo-item").length > 0);
+  assert.equal(await sorted.locator(".todo-handle").count(), 0);
+  await context.close();
+});

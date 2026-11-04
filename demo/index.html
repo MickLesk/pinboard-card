@@ -242,7 +242,7 @@
       "sensor.pressure": { entity_id: "sensor.pressure", state: "1.6", attributes: { unit_of_measurement: "bar", friendly_name: "Boiler pressure" } },
       "input_text.memo": { entity_id: "input_text.memo", state: "", attributes: { max: 255, friendly_name: "Memo" } },
       "person.mickey": { entity_id: "person.mickey", state: "home", attributes: { friendly_name: "Mickey", user_id: "u1" } },
-      "todo.shopping": { entity_id: "todo.shopping", state: "2", attributes: { friendly_name: "Shopping list" }, last_changed: new Date(Date.now() - 600000).toISOString() },
+      "todo.shopping": { entity_id: "todo.shopping", state: "2", attributes: { friendly_name: "Shopping list", supported_features: 95 }, last_changed: new Date(Date.now() - 600000).toISOString() },
       "binary_sensor.doorbell": { entity_id: "binary_sensor.doorbell", state: "off", attributes: { friendly_name: "Doorbell" } },
       "input_text.shopping": { entity_id: "input_text.shopping", state: "- [x] Milk\n- [ ] Bread\n- [ ] Coffee beans", attributes: { max: 255, friendly_name: "Shopping" }, last_changed: new Date(Date.now() - 3 * 3600000).toISOString() },
       "input_text.fridge_note": { entity_id: "input_text.fridge_note", state: "Milk is running low – buy 2 litres on Friday.", attributes: { max: 255, friendly_name: "Fridge note" }, last_changed: new Date(Date.now() - 7 * 60000).toISOString() },
@@ -319,6 +319,14 @@
         return new Response(JSON.stringify({ media_content_id: "media-source://media_source/local/pinboard/demo.jpg" }), { status: 200 });
       },
       async callWS(msg) {
+        if (msg.type === "todo/item/move") {
+          const from = todoItems.findIndex((i) => i.uid === msg.uid);
+          const [item] = todoItems.splice(from, 1);
+          const after = msg.previous_uid ? todoItems.findIndex((i) => i.uid === msg.previous_uid) + 1 : 0;
+          todoItems.splice(after, 0, item);
+          notifyTodo();
+          return null;
+        }
         if (msg.type === "media_source/resolve_media") return { url: "./garden.jpg", mime_type: "image/svg+xml" };
         if (msg.type === "logbook/get_events") return [
           { when: Date.now() / 1000 - 7200, entity_id: msg.entity_ids[0], state: "Milk is running low – buy 2 litres on Friday.", context_user_id: "u1" },

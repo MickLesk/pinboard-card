@@ -15,6 +15,7 @@ import {
   SWIPE_THRESHOLD_PX,
   TILE_MIN_WIDTH_PX,
   TODO_UNDO_MS,
+  TODO_FEATURE_MOVE,
 } from "./const";
 import { GestureDetector, runAction, type ActionKind, type SwipeDirection } from "./actions";
 import { conditionsHold, normalizeConfig, parseAspectRatio, validateConfig } from "./config";
@@ -292,6 +293,9 @@ export class PinboardCard extends HTMLElement {
   private _todoBusy = new Set<string>();
   /** A deleted to-do item waits a few seconds before it is removed, so it can be undone. */
   private _todoPendingDelete?: { entity: string; item: TodoItem; timer: number };
+  /** While an item is dragged, list updates wait so the rows under the finger stay put. */
+  private _todoDragging = false;
+  private _todoDeferred = false;
   private _markdownReady = customElements.get("ha-markdown") !== undefined;
 
   constructor() {
@@ -1986,6 +1990,9 @@ export class PinboardCard extends HTMLElement {
     );
     const pending = items.filter((item) => item.status !== "completed");
     const open = config.todo_sort === "due" ? sortByDue(pending) : pending;
+    // Dragging follows the list's own order, so it is offered only when that order is shown.
+    const features = Number(hass.states[source.todo]?.attributes.supported_features ?? 0);
+    const canMove = config.todo_sort !== "due" && (features & TODO_FEATURE_MOVE) !== 0 && pending.length > 1;
     const done = items.filter((item) => item.status === "completed");
 
     const row = (item: TodoItem) => {
@@ -2025,8 +2032,19 @@ export class PinboardCard extends HTMLElement {
       edit.title = t("todoEdit");
       edit.setAttribute("aria-label", t("todoEdit"));
       edit.innerHTML = `<ha-icon icon="mdi:pencil-outline"></ha-icon>`;
-      wrapper.append(label, edit);
       const holder = document.createElement("div");
+      holder.dataset.uid = item.uid;
+      if (canMove && item.status !== "completed") {
+        const handle = document.createElement("button");
+        handle.type = "button";
+        handle.className = "icon-button todo-handle";
+        handle.title = t("todoMove");
+        handle.setAttribute("aria-label", `${t("todoMove")}: ${item.summary}`);
+        handle.innerHTML = `<ha-icon icon="mdi:drag-vertical"></ha-icon>`;
+        this._bindTodoHandle(handle, holder, source.todo);
+        wrapper.append(handle);
+      }
+      wrapper.append(label, edit);
       holder.append(wrapper);
       if (item.description) {
         const desc = document.createElement("div");
@@ -2134,6 +2152,10 @@ export class PinboardCard extends HTMLElement {
       this._todoKey = key;
       this._todoItems = items;
       this._todoBusy.clear();
+      if (this._todoDragging) {
+        this._todoDeferred = true;
+        return;
+      }
       if (this._els && this._slide.todo_entity === entity && !this._editing) {
         this._renderNote(this._currentFace, this._noteSource(this._slide));
         this._updateScrollState(this._currentFace);
@@ -2255,6 +2277,97 @@ export class PinboardCard extends HTMLElement {
       this._deleteTodoLater(entity, item);
     });
     title.focus();
+  }
+
+  /** Drag with mouse or finger, or move one step with the arrow keys; Home Assistant stores the order. */
+  private _bindTodoHandle(handle: HTMLButtonElement, holder: HTMLElement, entity: string): void {
+    const rows = () => Array.from(holder.parentElement?.children ?? []) as HTMLElement[];
+    let startIndex = -1;
+    // Moving the row in the DOM drops pointer capture, so the drag follows the window instead.
+    const onMove = (ev: PointerEvent) => {
+      const list = holder.parentElement;
+      if (!list) return;
+      for (const other of rows()) {
+        if (other === holder) continue;
+        const rect = other.getBoundingClientRect();
+        const middle = rect.top + rect.height / 2;
+        const before = rows().indexOf(other) < rows().indexOf(holder);
+        if (before && ev.clientY < middle) {
+          list.insertBefore(holder, other);
+          break;
+        }
+        if (!before && ev.clientY > middle) {
+          list.insertBefore(holder, other.nextSibling);
+        }
+      }
+    };
+    const finish = () => {
+      window.removeEventListener("pointermove", onMove, true);
+      window.removeEventListener("pointerup", finish, true);
+      window.removeEventListener("pointercancel", finish, true);
+      holder.classList.remove("dragging");
+      this._todoDragging = false;
+      const moved = rows().indexOf(holder) !== startIndex;
+      if (moved) void this._moveTodoItem(entity, holder.dataset.uid ?? "", rows(), holder);
+      else if (this._todoDeferred) this._rerenderTodo();
+      this._todoDeferred = false;
+    };
+    handle.addEventListener("pointerdown", (ev) => {
+      if (ev.button !== 0 || this._todoDragging) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      startIndex = rows().indexOf(holder);
+      this._todoDragging = true;
+      holder.classList.add("dragging");
+      window.addEventListener("pointermove", onMove, true);
+      window.addEventListener("pointerup", finish, true);
+      window.addEventListener("pointercancel", finish, true);
+    });
+    // Keep the card's own gestures (swipe, hold) out of a drag that started on the handle.
+    for (const type of ["pointermove", "pointerup", "pointercancel"] as const) {
+      handle.addEventListener(type, (ev) => ev.stopPropagation());
+    }
+    handle.addEventListener("click", (ev) => ev.stopPropagation());
+    handle.addEventListener("keydown", (ev) => {
+      if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const list = holder.parentElement;
+      const all = rows();
+      const index = all.indexOf(holder);
+      const target = ev.key === "ArrowUp" ? index - 1 : index + 1;
+      if (!list || target < 0 || target >= all.length) return;
+      list.insertBefore(holder, ev.key === "ArrowUp" ? all[target] : all[target].nextSibling);
+      void this._moveTodoItem(entity, holder.dataset.uid ?? "", rows(), holder, true);
+    });
+  }
+
+  /** Sends the new position as "after this item" (or first), which is how Home Assistant stores order. */
+  private async _moveTodoItem(entity: string, uid: string, rows: HTMLElement[], holder: HTMLElement, refocus = false): Promise<void> {
+    const hass = this._hass;
+    if (!hass || !uid) return;
+    const index = rows.indexOf(holder);
+    const previous = index > 0 ? rows[index - 1].dataset.uid : undefined;
+    const items = this._todoItems.filter((item) => item.uid !== uid);
+    const item = this._todoItems.find((candidate) => candidate.uid === uid);
+    if (item) {
+      const at = previous ? items.findIndex((candidate) => candidate.uid === previous) + 1 : 0;
+      items.splice(at, 0, item);
+      this._todoItems = items;
+    }
+    const message: Record<string, unknown> = { type: "todo/item/move", entity_id: entity, uid };
+    if (previous) message.previous_uid = previous;
+    try {
+      await hass.callWS(message);
+    } catch (err) {
+      console.warn("Pinboard: could not move the to-do item", err);
+      this._todoKey = "";
+    }
+    this._rerenderTodo();
+    if (refocus) {
+      const handle = this._currentFace.noteBody.querySelector<HTMLElement>(`[data-uid="${CSS.escape(uid)}"] .todo-handle`);
+      handle?.focus();
+    }
   }
 
   private _rerenderTodo(): void {

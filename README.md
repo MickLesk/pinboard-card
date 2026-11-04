@@ -49,9 +49,9 @@ can hold up to ten pictures, notes and recordings in any order.
   `camera` or `person` entities work too.
 - **Notes in Markdown** — bold, lists, links, plus **templates** such as
   `{{ states('sensor.boiler') }}` that follow state changes.
-- **To-do lists as pages** — a `todo.*` list becomes a checklist you tick and
-  extend on the card. Items carry details, so a list also works as a stack of
-  longer notes. Home Assistant keeps the list, so every device, the To-do view
+- **To-do lists as pages** — a `todo.*` list becomes a checklist you tick,
+  extend and reorder on the card, with due dates and undo for deletions.
+  Items carry details, so a list also works as a stack of longer notes. Home Assistant keeps the list, so every device, the To-do view
   and automations see the same state.
 - **History** — notes from entities show their last changes with time and
   person, straight from Home Assistant's logbook.

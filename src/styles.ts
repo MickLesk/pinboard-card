@@ -729,6 +729,29 @@ ha-card {
   flex: 1;
   min-width: 0;
 }
+.todo-item .todo-handle {
+  width: 24px;
+  height: 30px;
+  margin: 2px -4px 0 -6px;
+  cursor: grab;
+  touch-action: none;
+  color: var(--secondary-text-color);
+  opacity: 0.55;
+}
+.todo-item .todo-handle:hover,
+.todo-item .todo-handle:focus-visible {
+  opacity: 1;
+}
+.dragging {
+  position: relative;
+  z-index: 1;
+  border-radius: 6px;
+  background: var(--card-background-color, #fff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.dragging .todo-handle {
+  cursor: grabbing;
+}
 .todo-item .todo-edit {
   width: 30px;
   height: 30px;
