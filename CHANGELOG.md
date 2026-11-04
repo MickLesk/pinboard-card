@@ -5,6 +5,26 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- To-do items show their due date next to the title ("Today", "Tomorrow",
+  "Fri, 7 Nov", with the time for items due at a time), and overdue items are
+  marked in red. `todo_sort: due` lists open items by due date; the editor
+  offers it under "Notes and to-do lists".
+- Deleting a to-do item on the card can be undone: the item disappears at
+  once, and an "Undo" button stays for six seconds before the item is
+  removed from the list.
+- Open to-do items can be put in a new order: drag the handle in front of
+  an item, or focus it and use the up and down arrow keys. The order is
+  saved in Home Assistant, for lists that support it.
+- Screen readers announce the page a tap, swipe, arrow or key turns to
+  ("Trip – Slide 2 of 5"). Automatic paging stays silent.
+
+### Fixed
+
+- A to-do item whose details or due date changed elsewhere is now redrawn;
+  before, only changes to its title or status reached the card.
+
 ### Fixed
 
 - `auto_advance` and `auto_flip` no longer turn the page while a voice memo

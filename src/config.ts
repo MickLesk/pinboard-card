@@ -1,4 +1,4 @@
-import { DEFAULTS, DIRECTIONS, EXPIRED_MODES, IMAGE_FITS, LAYOUTS, MAX_SLIDES, NOTE_STYLES, SIDES, TRANSITIONS } from "./const";
+import { DEFAULTS, DIRECTIONS, EXPIRED_MODES, IMAGE_FITS, LAYOUTS, MAX_SLIDES, NOTE_STYLES, SIDES, TODO_SORTS, TRANSITIONS } from "./const";
 import type {
   ActionConfig,
   PinboardCardConfig,
@@ -279,6 +279,7 @@ export function normalizeConfig(config: PinboardCardConfig): NormalizedConfig {
     checklist_writeback: bool(config.checklist_writeback, DEFAULTS.checklist_writeback),
     todo_add: bool(config.todo_add, DEFAULTS.todo_add),
     todo_show_completed: bool(config.todo_show_completed, DEFAULTS.todo_show_completed),
+    todo_sort: pick(config.todo_sort, TODO_SORTS, DEFAULTS.todo_sort),
     show_history: bool(config.show_history, DEFAULTS.show_history),
     show_expand: bool(config.show_expand, DEFAULTS.show_expand),
     upload_target: config.upload_target === "media" ? "media" : "image",

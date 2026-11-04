@@ -78,11 +78,24 @@ The page shows the open items as checkboxes, the completed ones struck
 through below (`todo_show_completed`), and an input row for new items
 (`todo_add`). Every item can carry details: the pencil next to an item opens
 title and details for editing (with the formatting buttons) and offers
-deletion. Details are shown under the item, so a to-do list doubles as a stack
+deletion. A deleted item disappears at once and an "Undo" button shows for
+six seconds; only then is it removed from the list. Details are shown under the item, so a to-do list doubles as a stack
 of longer notes without the 255-character limit of `input_text`. Ticks call `todo.update_item`, new items `todo.add_item`, so the
 list stays the same on every device, in Home Assistant's To-do view and for
 automations. The list's name is used as the page title when the page has
 none; `note` is shown as text above the list.
+
+Items with a due date show it next to the title: "Today", "Tomorrow" or a
+short date, with the time for items due at a time. Overdue items are marked
+in red. `todo_sort: due` lists the open items by due date, earliest first;
+items without one follow in the list's own order.
+
+Lists that keep their own order (Local To-do and most other integrations)
+show a handle in front of every open item. Drag it with the mouse or a
+finger, or focus it and press the up and down arrow keys, to move the item;
+the new order is saved in Home Assistant through `todo/item/move`. The
+handle is hidden with `todo_sort: due`, where the list's order is not
+shown.
 
 ### Checklists in note text
 

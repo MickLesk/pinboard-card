@@ -1,4 +1,4 @@
-import type { ActionConfig, NormalizedConfig, Transition, Direction, Side, ImageFit, Layout, NoteStyle, ExpiredMode } from "./types";
+import type { ActionConfig, NormalizedConfig, Transition, Direction, Side, ImageFit, Layout, NoteStyle, ExpiredMode, TodoSort } from "./types";
 
 export const CARD_TYPE = "pinboard-card";
 export const EDITOR_TYPE = "pinboard-card-editor";
@@ -17,6 +17,7 @@ export const TILE_MIN_WIDTH_PX = 150;
 export const MAX_SLIDES = 10;
 export const NOTE_STYLES: NoteStyle[] = ["plain", "sticky"];
 export const EXPIRED_MODES: ExpiredMode[] = ["dim", "hide"];
+export const TODO_SORTS: TodoSort[] = ["manual", "due"];
 export const ASPECT_RATIOS = ["16:9", "4:3", "3:2", "1:1", "3:4", "9:16", "auto"];
 
 export const NOTE_ENTITY_DOMAINS = ["input_text", "text"];
@@ -27,6 +28,10 @@ export const HISTORY_DAYS = 30;
 export const HISTORY_ROWS = 15;
 /** Recordings stop on their own after this many seconds. */
 export const MAX_RECORDING_SECONDS = 180;
+/** How long a deleted to-do item can be brought back before it is removed from the list. */
+export const TODO_UNDO_MS = 6000;
+/** TodoListEntityFeature.MOVE_TODO_ITEM: the list can store a custom order. */
+export const TODO_FEATURE_MOVE = 8;
 
 export const MEDIA_SOURCE_PREFIX = "media-source://";
 /** How long a signed media-source URL is requested for, in seconds (24 h). */
@@ -66,6 +71,7 @@ export const DEFAULTS: Omit<NormalizedConfig, "type" | "entries" | "slides"> = {
   checklist_writeback: true,
   todo_add: true,
   todo_show_completed: true,
+  todo_sort: "manual",
   show_history: true,
   show_expand: true,
   upload_target: "image",

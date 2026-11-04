@@ -650,7 +650,22 @@ test("to-do items show details and can be edited or deleted on the card", async 
   await cur().locator(".todo-item").first().hover();
   await cur().locator(".todo-item").first().locator(".todo-edit").click();
   await cur().locator(".todo-editor .btn").first().click(); // delete
-  await page.waitForFunction(() => !window.__todoItems.some((i) => i.summary === "Rye bread"));
+  // The item disappears at once but stays in the list until the undo window has passed.
+  assert.doesNotMatch(await cur().locator(".checklist").nth(0).innerText(), /Rye bread/);
+  assert.match(await cur().locator(".todo-undo").innerText(), /“Rye bread” deleted/);
+  assert.equal(await page.evaluate(() => window.__todoItems.some((i) => i.summary === "Rye bread")), true);
+  await cur().locator(".todo-undo .btn").click();
+  assert.equal(await cur().locator(".todo-undo").count(), 0);
+  assert.match(await cur().locator(".checklist").nth(0).innerText(), /Rye bread/);
+  await page.waitForTimeout(6500);
+  assert.equal(await page.evaluate(() => window.__todoItems.some((i) => i.summary === "Rye bread")), true, "undo keeps the item");
+
+  await cur().locator(".todo-item").first().hover();
+  await cur().locator(".todo-item").first().locator(".todo-edit").click();
+  await cur().locator(".todo-editor .btn").first().click(); // delete for good
+  await page.waitForFunction(() => !window.__todoItems.some((i) => i.summary === "Rye bread"), null, { timeout: 9000 });
+  await page.waitForTimeout(200);
+  assert.equal(await cur().locator(".todo-undo").count(), 0);
   await context.close();
 });
 
@@ -1175,5 +1190,98 @@ test("status messages scheduled to hide are cancelled when the card is removed",
   await page.waitForTimeout(400);
   assert.equal(await page.evaluate(() => window.__hidden ?? false), false);
   assert.deepEqual(errors, []);
+  await context.close();
+});
+
+test("to-do items show their due date, overdue ones stand out, and todo_sort: due orders by it", async () => {
+  const { page, context } = await openDemo();
+  const todo = card(page, 12);
+  await todo.scrollIntoViewIfNeeded();
+  const cur = () => todo.locator(".face.current");
+  const open = cur().locator(".checklist").nth(0);
+  const bread = open.locator(".todo-item").nth(0);
+  assert.match(await bread.innerText(), /Bread/);
+  assert.equal(await bread.locator(".todo-due").getAttribute("class"), "todo-due overdue");
+  assert.match(await bread.locator(".todo-due").innerText(), /Overdue · Yesterday/);
+  const coffee = open.locator(".todo-item").nth(1);
+  assert.equal(await coffee.locator(".todo-due").getAttribute("class"), "todo-due upcoming");
+  assert.equal(await cur().locator(".checklist").nth(1).locator(".todo-due").count(), 0); // Milk has no due date
+
+  // A due date changed elsewhere re-renders the list, and todo_sort: due puts the earliest first.
+  await page.evaluate(() => {
+    window.__todoItems.find((i) => i.summary === "Coffee beans").due = "2000-01-01";
+  });
+  const el = await mountCard(page, { type: "custom:pinboard-card", todo_entity: "todo.shopping", todo_sort: "due" });
+  const titles = () => el.locator(".face.current .checklist").nth(0).locator(".check > span").allInnerTexts();
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .todo-item").length > 0);
+  assert.match((await titles())[0], /^Coffee beans/);
+  assert.match((await titles())[1], /^Bread/);
+  await context.close();
+});
+
+test("screen readers hear the page a key or tap turned to, but not automatic paging", async () => {
+  const { page, context } = await openDemo();
+  const el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    title: "Trip",
+    slides: ["One", "Two", "Three"].map((note) => ({ note })),
+  });
+  const live = el.locator(".live");
+  assert.equal(await live.getAttribute("aria-live"), "polite");
+  assert.equal(await live.innerText(), "");
+  await el.locator(".stage").focus();
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await live.textContent(), "Trip – Slide 2 of 3");
+  await page.keyboard.press("ArrowLeft");
+  assert.equal(await live.textContent(), "Trip – Slide 1 of 3");
+
+  const auto = await mountCard(page, {
+    type: "custom:pinboard-card",
+    title: "Auto",
+    auto_flip: 1,
+    slides: ["One", "Two", "Three"].map((note) => ({ note })),
+  });
+  await page.waitForFunction(() => document.querySelector("#extra-card")._index > 0, null, { timeout: 3000 });
+  assert.equal(await auto.locator(".live").textContent(), "");
+  await context.close();
+});
+
+test("open to-do items can be dragged or moved with the arrow keys into a new order", async () => {
+  const { page, context } = await openDemo();
+  await page.evaluate(() => {
+    window.__todoItems.push({ uid: "d4", summary: "Apples", status: "needs_action" });
+  });
+  const el = await mountCard(page, { type: "custom:pinboard-card", todo_entity: "todo.shopping" });
+  const open = () => el.locator(".face.current .checklist").nth(0);
+  const order = async () => (await open().locator(".check > span").allInnerTexts()).map((text) => text.split(" ")[0]);
+  const stored = () => page.evaluate(() => window.__todoItems.filter((i) => i.status !== "completed").map((i) => i.summary.split(" ")[0]));
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .todo-handle").length === 3);
+  assert.deepEqual(await order(), ["Bread", "Coffee", "Apples"]);
+  assert.equal(await el.locator(".face.current .checklist").nth(1).locator(".todo-handle").count(), 0); // completed items stay put
+
+  // Drag Apples above Bread.
+  const handle = open().locator(".todo-handle").nth(2);
+  const from = await handle.boundingBox();
+  const target = await open().locator(".todo-item").nth(0).boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(from.x + from.width / 2, target.y + 2, { steps: 8 });
+  await page.mouse.up();
+  await page.waitForFunction(() => window.__todoItems.filter((i) => i.status !== "completed")[0].summary === "Apples");
+  assert.deepEqual(await stored(), ["Apples", "Bread", "Coffee"]);
+  assert.deepEqual(await order(), ["Apples", "Bread", "Coffee"]);
+  assert.equal(await el.evaluate((card) => card.slide?.kind), "note"); // the drag did not turn the page
+
+  // Arrow keys move one step and keep the focus on the moved item.
+  await open().locator(".todo-handle").nth(0).focus();
+  await page.keyboard.press("ArrowDown");
+  await page.waitForFunction(() => window.__todoItems.filter((i) => i.status !== "completed")[1].summary === "Apples");
+  assert.deepEqual(await stored(), ["Bread", "Apples", "Coffee"]);
+  assert.equal(await el.evaluate((card) => card.shadowRoot.activeElement?.closest("[data-uid]")?.dataset.uid), "d4");
+
+  // Sorted by due date, the list's own order is not shown, so there is nothing to drag.
+  const sorted = await mountCard(page, { type: "custom:pinboard-card", todo_entity: "todo.shopping", todo_sort: "due" });
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .todo-item").length > 0);
+  assert.equal(await sorted.locator(".todo-handle").count(), 0);
   await context.close();
 });

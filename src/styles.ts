@@ -729,6 +729,29 @@ ha-card {
   flex: 1;
   min-width: 0;
 }
+.todo-item .todo-handle {
+  width: 24px;
+  height: 30px;
+  margin: 2px -4px 0 -6px;
+  cursor: grab;
+  touch-action: none;
+  color: var(--secondary-text-color);
+  opacity: 0.55;
+}
+.todo-item .todo-handle:hover,
+.todo-item .todo-handle:focus-visible {
+  opacity: 1;
+}
+.dragging {
+  position: relative;
+  z-index: 1;
+  border-radius: 6px;
+  background: var(--card-background-color, #fff);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+.dragging .todo-handle {
+  cursor: grabbing;
+}
 .todo-item .todo-edit {
   width: 30px;
   height: 30px;
@@ -741,6 +764,64 @@ ha-card {
 }
 @media (hover: none) {
   .todo-item .todo-edit { opacity: 0.6; }
+}
+.todo-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.78em;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: var(--secondary-text-color);
+  background: rgba(127, 127, 127, 0.14);
+}
+.todo-due ha-icon {
+  --mdc-icon-size: 13px;
+}
+.todo-due.today {
+  color: var(--primary-color);
+}
+.todo-due.overdue {
+  color: var(--error-color, #db4437);
+  background: rgba(219, 68, 55, 0.12);
+  font-weight: 500;
+}
+.check.done .todo-due {
+  color: var(--secondary-text-color);
+  background: rgba(127, 127, 127, 0.14);
+  font-weight: normal;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.todo-undo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 4px 4px 4px 10px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  background: rgba(127, 127, 127, 0.14);
+}
+.todo-undo span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .todo-desc {
   margin: -2px 0 6px 30px;
