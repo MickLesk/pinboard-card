@@ -282,6 +282,7 @@ checklist: true                    # "- [ ] item" lines become checkboxes
 checklist_writeback: true          # save ticks to input_text / text entities
 todo_add: true                     # input row on to-do pages for new items
 todo_show_completed: true          # keep completed to-do items visible, struck through
+todo_sort: manual                  # manual: the list's own order | due: open items by due date
 show_history: true                 # history button on notes from entities
 show_expand: true                  # enlarge button on pages that do not fit; a long press opens the same popup
 
@@ -342,6 +343,7 @@ double_tap_action:
 | `checklist_writeback` | `true` | Save ticks on notes from an `input_text` or `text` entity to the entity. |
 | `todo_add` | `true` | Input row on to-do pages for adding items. |
 | `todo_show_completed` | `true` | Keep completed to-do items visible below the open ones, struck through. |
+| `todo_sort` | `manual` | `manual` keeps the list's own order, `due` lists open items by due date, earliest first, with undated items last. |
 | `show_history` | `true` | History button on notes from entities: the last changes with time and person, from the logbook. |
 | `show_expand` | `true` | Enlarge button in the footer when a page does not fit the card, and a long press opens the same popup unless a hold action is set. |
 | `upload_target` | `image` | Where the editor's upload button and the camera and record buttons store files: `image` (Home Assistant's image store) or `media` (the media folder). Audio always goes to the media folder. |

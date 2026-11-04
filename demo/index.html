@@ -250,10 +250,16 @@
     let language = "en";
     const listeners = new Set();
     const templateSubs = new Set();
+    // Due dates relative to today, so the demo always shows an overdue and an upcoming item.
+    const dayFromToday = (offset) => {
+      const d = new Date();
+      d.setDate(d.getDate() + offset);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    };
     const todoItems = [
       { uid: "a1", summary: "Milk", status: "completed", description: "The **lactose-free** one." },
-      { uid: "b2", summary: "Bread", status: "needs_action" },
-      { uid: "c3", summary: "Coffee beans", status: "needs_action" },
+      { uid: "b2", summary: "Bread", status: "needs_action", due: dayFromToday(-1) },
+      { uid: "c3", summary: "Coffee beans", status: "needs_action", due: dayFromToday(2) },
     ];
     const todoSubs = new Set();
     const notifyTodo = () => todoSubs.forEach((f) => f({ items: todoItems.map((i) => ({ ...i })) }));

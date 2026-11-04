@@ -19,7 +19,7 @@ import { GestureDetector, runAction, type ActionKind, type SwipeDirection } from
 import { conditionsHold, normalizeConfig, parseAspectRatio, validateConfig } from "./config";
 import { resolveLanguage, translate } from "./i18n";
 import { CARD_STYLES } from "./styles";
-import { formatRelativeTime } from "./time";
+import { describeDue, formatRelativeTime, sortByDue } from "./time";
 import { buildToolbar } from "./markdown-toolbar";
 import { UploadError, preferredAudioType, uploadAudio, uploadPicture } from "./upload";
 import {
@@ -1968,7 +1968,8 @@ export class PinboardCard extends HTMLElement {
     if (!config || !hass) return;
     const t = (key: string) => translate(this._lang, key);
     const items = this._todoEntity === source.todo ? this._todoItems : [];
-    const open = items.filter((item) => item.status !== "completed");
+    const pending = items.filter((item) => item.status !== "completed");
+    const open = config.todo_sort === "due" ? sortByDue(pending) : pending;
     const done = items.filter((item) => item.status === "completed");
 
     const row = (item: TodoItem) => {
@@ -1982,6 +1983,21 @@ export class PinboardCard extends HTMLElement {
       input.disabled = this._todoBusy.has(item.uid);
       const text = document.createElement("span");
       text.textContent = item.summary;
+      const due = describeDue(item.due, this._lang);
+      if (due) {
+        const chip = document.createElement("span");
+        chip.className = `todo-due ${due.state}`;
+        const dueIcon = document.createElement("ha-icon");
+        dueIcon.setAttribute("icon", due.state === "overdue" ? "mdi:calendar-alert" : "mdi:calendar-blank-outline");
+        const dueText = document.createElement("span");
+        dueText.textContent = due.text;
+        chip.append(dueIcon, dueText);
+        if (due.state === "overdue" && item.status !== "completed") {
+          chip.title = t("todoOverdue");
+          dueText.textContent = `${t("todoOverdue")} · ${due.text}`;
+        }
+        text.append(" ", chip);
+      }
       input.addEventListener("change", () => {
         label.classList.toggle("done", input.checked);
         void this._setTodoStatus(source.todo, item, input.checked);
@@ -2079,7 +2095,7 @@ export class PinboardCard extends HTMLElement {
     this._todoEntity = entity;
     const apply = (items: TodoItem[]) => {
       if (this._todoEntity !== entity) return;
-      const key = JSON.stringify(items.map((i) => [i.uid, i.summary, i.status]));
+      const key = JSON.stringify(items.map((i) => [i.uid, i.summary, i.status, i.due ?? "", i.description ?? ""]));
       if (key === this._todoKey) return;
       this._todoKey = key;
       this._todoItems = items;

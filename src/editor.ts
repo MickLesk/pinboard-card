@@ -3,6 +3,7 @@ import {
   DEFAULTS,
   DIRECTIONS,
   EXPIRED_MODES,
+  TODO_SORTS,
   IMAGE_FITS,
   LAYOUTS,
   NOTE_STYLES,
@@ -1552,6 +1553,7 @@ export class PinboardCardEditor extends HTMLElement {
           { name: "show_history", selector: { boolean: {} } },
           { name: "show_expand", selector: { boolean: {} } },
         ]),
+        { name: "todo_sort", selector: { select: { mode: "dropdown", options: options(TODO_SORTS, "todo_sort") } } },
       ]),
       section("upload_settings", "mdi:folder-image", t("editor_upload_settings"), false, [
         { name: "upload_target", selector: { select: { mode: "dropdown", options: options(UPLOAD_TARGETS, "upload_target") } } },

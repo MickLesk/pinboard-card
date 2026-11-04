@@ -5,6 +5,18 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- To-do items show their due date next to the title ("Today", "Tomorrow",
+  "Fri, 7 Nov", with the time for items due at a time), and overdue items are
+  marked in red. `todo_sort: due` lists open items by due date; the editor
+  offers it under "Notes and to-do lists".
+
+### Fixed
+
+- A to-do item whose details or due date changed elsewhere is now redrawn;
+  before, only changes to its title or status reached the card.
+
 ### Fixed
 
 - `auto_advance` and `auto_flip` no longer turn the page while a voice memo

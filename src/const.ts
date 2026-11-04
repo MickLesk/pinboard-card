@@ -1,4 +1,4 @@
-import type { ActionConfig, NormalizedConfig, Transition, Direction, Side, ImageFit, Layout, NoteStyle, ExpiredMode } from "./types";
+import type { ActionConfig, NormalizedConfig, Transition, Direction, Side, ImageFit, Layout, NoteStyle, ExpiredMode, TodoSort } from "./types";
 
 export const CARD_TYPE = "pinboard-card";
 export const EDITOR_TYPE = "pinboard-card-editor";
@@ -17,6 +17,7 @@ export const TILE_MIN_WIDTH_PX = 150;
 export const MAX_SLIDES = 10;
 export const NOTE_STYLES: NoteStyle[] = ["plain", "sticky"];
 export const EXPIRED_MODES: ExpiredMode[] = ["dim", "hide"];
+export const TODO_SORTS: TodoSort[] = ["manual", "due"];
 export const ASPECT_RATIOS = ["16:9", "4:3", "3:2", "1:1", "3:4", "9:16", "auto"];
 
 export const NOTE_ENTITY_DOMAINS = ["input_text", "text"];
@@ -66,6 +67,7 @@ export const DEFAULTS: Omit<NormalizedConfig, "type" | "entries" | "slides"> = {
   checklist_writeback: true,
   todo_add: true,
   todo_show_completed: true,
+  todo_sort: "manual",
   show_history: true,
   show_expand: true,
   upload_target: "image",

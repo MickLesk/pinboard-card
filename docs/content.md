@@ -84,6 +84,11 @@ list stays the same on every device, in Home Assistant's To-do view and for
 automations. The list's name is used as the page title when the page has
 none; `note` is shown as text above the list.
 
+Items with a due date show it next to the title: "Today", "Tomorrow" or a
+short date, with the time for items due at a time. Overdue items are marked
+in red. `todo_sort: due` lists the open items by due date, earliest first;
+items without one follow in the list's own order.
+
 ### Checklists in note text
 
 Lines like `- [ ] Bread` and `- [x] Milk` in a note become checkboxes. When

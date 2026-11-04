@@ -5,6 +5,7 @@ export type ImageFit = "cover" | "contain";
 export type Layout = "stack" | "grid";
 export type NoteStyle = "plain" | "sticky";
 export type ExpiredMode = "dim" | "hide";
+export type TodoSort = "manual" | "due";
 
 export type ActionName =
   | "flip"
@@ -162,6 +163,8 @@ export interface PinboardCardConfig extends PageConfig {
   todo_add?: boolean;
   /** Keep completed to-do items visible, struck through. */
   todo_show_completed?: boolean;
+  /** "due" lists open to-do items by due date instead of the list's own order. */
+  todo_sort?: TodoSort;
   /** History button on notes from entities (recorder and logbook). */
   show_history?: boolean;
   /** Enlarge button on pages that do not fit, and long press opens the enlarged view. */
@@ -213,6 +216,7 @@ export interface NormalizedConfig {
   checklist_writeback: boolean;
   todo_add: boolean;
   todo_show_completed: boolean;
+  todo_sort: TodoSort;
   show_history: boolean;
   show_expand: boolean;
   upload_target: "image" | "media";

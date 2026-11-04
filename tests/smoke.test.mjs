@@ -1177,3 +1177,29 @@ test("status messages scheduled to hide are cancelled when the card is removed",
   assert.deepEqual(errors, []);
   await context.close();
 });
+
+test("to-do items show their due date, overdue ones stand out, and todo_sort: due orders by it", async () => {
+  const { page, context } = await openDemo();
+  const todo = card(page, 12);
+  await todo.scrollIntoViewIfNeeded();
+  const cur = () => todo.locator(".face.current");
+  const open = cur().locator(".checklist").nth(0);
+  const bread = open.locator(".todo-item").nth(0);
+  assert.match(await bread.innerText(), /Bread/);
+  assert.equal(await bread.locator(".todo-due").getAttribute("class"), "todo-due overdue");
+  assert.match(await bread.locator(".todo-due").innerText(), /Overdue · Yesterday/);
+  const coffee = open.locator(".todo-item").nth(1);
+  assert.equal(await coffee.locator(".todo-due").getAttribute("class"), "todo-due upcoming");
+  assert.equal(await cur().locator(".checklist").nth(1).locator(".todo-due").count(), 0); // Milk has no due date
+
+  // A due date changed elsewhere re-renders the list, and todo_sort: due puts the earliest first.
+  await page.evaluate(() => {
+    window.__todoItems.find((i) => i.summary === "Coffee beans").due = "2000-01-01";
+  });
+  const el = await mountCard(page, { type: "custom:pinboard-card", todo_entity: "todo.shopping", todo_sort: "due" });
+  const titles = () => el.locator(".face.current .checklist").nth(0).locator(".check > span").allInnerTexts();
+  await page.waitForFunction(() => document.querySelector("#extra-card").shadowRoot.querySelectorAll(".face.current .todo-item").length > 0);
+  assert.match((await titles())[0], /^Coffee beans/);
+  assert.match((await titles())[1], /^Bread/);
+  await context.close();
+});

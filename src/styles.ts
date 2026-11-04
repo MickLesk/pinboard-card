@@ -742,6 +742,36 @@ ha-card {
 @media (hover: none) {
   .todo-item .todo-edit { opacity: 0.6; }
 }
+.todo-due {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: 2px;
+  padding: 0 6px;
+  border-radius: 999px;
+  font-size: 0.78em;
+  line-height: 1.6;
+  white-space: nowrap;
+  vertical-align: 1px;
+  color: var(--secondary-text-color);
+  background: rgba(127, 127, 127, 0.14);
+}
+.todo-due ha-icon {
+  --mdc-icon-size: 13px;
+}
+.todo-due.today {
+  color: var(--primary-color);
+}
+.todo-due.overdue {
+  color: var(--error-color, #db4437);
+  background: rgba(219, 68, 55, 0.12);
+  font-weight: 500;
+}
+.check.done .todo-due {
+  color: var(--secondary-text-color);
+  background: rgba(127, 127, 127, 0.14);
+  font-weight: normal;
+}
 .todo-desc {
   margin: -2px 0 6px 30px;
   font-size: 0.9em;
