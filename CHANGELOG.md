@@ -5,6 +5,8 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-11-04
+
 ### Added
 
 - To-do items show their due date next to the title ("Today", "Tomorrow",
