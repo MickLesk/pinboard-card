@@ -1218,3 +1218,30 @@ test("to-do items show their due date, overdue ones stand out, and todo_sort: du
   assert.match((await titles())[1], /^Bread/);
   await context.close();
 });
+
+test("screen readers hear the page a key or tap turned to, but not automatic paging", async () => {
+  const { page, context } = await openDemo();
+  const el = await mountCard(page, {
+    type: "custom:pinboard-card",
+    title: "Trip",
+    slides: ["One", "Two", "Three"].map((note) => ({ note })),
+  });
+  const live = el.locator(".live");
+  assert.equal(await live.getAttribute("aria-live"), "polite");
+  assert.equal(await live.innerText(), "");
+  await el.locator(".stage").focus();
+  await page.keyboard.press("ArrowRight");
+  assert.equal(await live.textContent(), "Trip – Slide 2 of 3");
+  await page.keyboard.press("ArrowLeft");
+  assert.equal(await live.textContent(), "Trip – Slide 1 of 3");
+
+  const auto = await mountCard(page, {
+    type: "custom:pinboard-card",
+    title: "Auto",
+    auto_flip: 1,
+    slides: ["One", "Two", "Three"].map((note) => ({ note })),
+  });
+  await page.waitForFunction(() => document.querySelector("#extra-card")._index > 0, null, { timeout: 3000 });
+  assert.equal(await auto.locator(".live").textContent(), "");
+  await context.close();
+});

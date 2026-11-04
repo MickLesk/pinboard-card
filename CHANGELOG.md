@@ -14,6 +14,8 @@ All notable changes to Pinboard are documented here. The format follows
 - Deleting a to-do item on the card can be undone: the item disappears at
   once, and an "Undo" button stays for six seconds before the item is
   removed from the list.
+- Screen readers announce the page a tap, swipe, arrow or key turns to
+  ("Trip – Slide 2 of 5"). Automatic paging stays silent.
 
 ### Fixed
 

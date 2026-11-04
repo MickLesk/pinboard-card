@@ -117,6 +117,8 @@ interface Elements {
   badge: HTMLElement;
   badgeIcon: HTMLElement;
   badgeLabel: HTMLElement;
+  /** Tells screen readers which page a tap, swipe or key turned to. */
+  live: HTMLElement;
 }
 
 interface NoteSource {
@@ -215,6 +217,7 @@ const TEMPLATE = `
       <div class="badge hidden"><ha-icon></ha-icon><span></span></div>
     </div>
   </div>
+  <div class="sr-only live" aria-live="polite" aria-atomic="true"></div>
 </ha-card>`;
 
 function isMediaSourceId(value: string): boolean {
@@ -262,6 +265,7 @@ export class PinboardCard extends HTMLElement {
   private _mediaPending = false;
   private _refreshTimer?: number;
   private _autoTimer?: number;
+  private _autoStepping = false;
   private _metaTimer?: number;
   private _resizeObserver?: ResizeObserver;
   private _gestures?: GestureDetector;
@@ -651,6 +655,7 @@ export class PinboardCard extends HTMLElement {
       badge: q(this._root, ".badge"),
       badgeIcon: q(this._root, ".badge ha-icon"),
       badgeLabel: q(this._root, ".badge span"),
+      live: q(this._root, ".live"),
     };
     const els = this._els;
 
@@ -965,6 +970,10 @@ export class PinboardCard extends HTMLElement {
     if (total > 1) parts.push(t("slide", { index: this._index + 1, total }));
     if (next && total > 1) parts.push(t(next.kind === "note" ? "showNote" : next.kind === "audio" ? "showAudio" : "showPhoto"));
     els.stage.setAttribute("aria-label", parts.join(" – "));
+    // Automatic paging stays silent: announcing every timer tick would talk over everything else.
+    if (emit && total > 1 && !this._autoStepping) {
+      els.live.textContent = [title, t("slide", { index: this._index + 1, total })].filter(Boolean).join(" – ");
+    }
     els.stage.setAttribute("aria-pressed", String(slide.kind === "note"));
 
     this._updateScrollState(this._currentFace);
@@ -2550,7 +2559,13 @@ export class PinboardCard extends HTMLElement {
     const seconds = config.auto_flip || config.auto_advance;
     if (seconds > 0 && this._slides().length > 1) {
       this._autoTimer = window.setInterval(() => {
-        if (!this._autoPaused()) this.goTo("next");
+        if (this._autoPaused()) return;
+        this._autoStepping = true;
+        try {
+          this.goTo("next");
+        } finally {
+          this._autoStepping = false;
+        }
       }, seconds * 1000);
     }
   }
