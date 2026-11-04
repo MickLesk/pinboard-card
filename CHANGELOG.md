@@ -11,6 +11,9 @@ All notable changes to Pinboard are documented here. The format follows
   "Fri, 7 Nov", with the time for items due at a time), and overdue items are
   marked in red. `todo_sort: due` lists open items by due date; the editor
   offers it under "Notes and to-do lists".
+- Deleting a to-do item on the card can be undone: the item disappears at
+  once, and an "Undo" button stays for six seconds before the item is
+  removed from the list.
 
 ### Fixed
 

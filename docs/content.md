@@ -78,7 +78,8 @@ The page shows the open items as checkboxes, the completed ones struck
 through below (`todo_show_completed`), and an input row for new items
 (`todo_add`). Every item can carry details: the pencil next to an item opens
 title and details for editing (with the formatting buttons) and offers
-deletion. Details are shown under the item, so a to-do list doubles as a stack
+deletion. A deleted item disappears at once and an "Undo" button shows for
+six seconds; only then is it removed from the list. Details are shown under the item, so a to-do list doubles as a stack
 of longer notes without the 255-character limit of `input_text`. Ticks call `todo.update_item`, new items `todo.add_item`, so the
 list stays the same on every device, in Home Assistant's To-do view and for
 automations. The list's name is used as the page title when the page has

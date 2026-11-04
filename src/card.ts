@@ -14,6 +14,7 @@ import {
   SAMPLE_IMAGE,
   SWIPE_THRESHOLD_PX,
   TILE_MIN_WIDTH_PX,
+  TODO_UNDO_MS,
 } from "./const";
 import { GestureDetector, runAction, type ActionKind, type SwipeDirection } from "./actions";
 import { conditionsHold, normalizeConfig, parseAspectRatio, validateConfig } from "./config";
@@ -285,6 +286,8 @@ export class PinboardCard extends HTMLElement {
   private _todoKey = "";
   private _todoUnsub?: Promise<() => Promise<void>>;
   private _todoBusy = new Set<string>();
+  /** A deleted to-do item waits a few seconds before it is removed, so it can be undone. */
+  private _todoPendingDelete?: { entity: string; item: TodoItem; timer: number };
   private _markdownReady = customElements.get("ha-markdown") !== undefined;
 
   constructor() {
@@ -317,6 +320,7 @@ export class PinboardCard extends HTMLElement {
     window.clearTimeout(this._animTimer);
     window.clearInterval(this._metaTimer);
     this._metaTimer = undefined;
+    this._commitTodoDelete();
     this._unsubscribeTemplate();
     this._unsubscribeTodo();
     this._stopAudio();
@@ -1967,7 +1971,10 @@ export class PinboardCard extends HTMLElement {
     const hass = this._hass;
     if (!config || !hass) return;
     const t = (key: string) => translate(this._lang, key);
-    const items = this._todoEntity === source.todo ? this._todoItems : [];
+    const pendingDelete = this._todoPendingDelete?.entity === source.todo ? this._todoPendingDelete : undefined;
+    const items = (this._todoEntity === source.todo ? this._todoItems : []).filter(
+      (item) => item.uid !== pendingDelete?.item.uid,
+    );
     const pending = items.filter((item) => item.status !== "completed");
     const open = config.todo_sort === "due" ? sortByDue(pending) : pending;
     const done = items.filter((item) => item.status === "completed");
@@ -2048,6 +2055,24 @@ export class PinboardCard extends HTMLElement {
         done.forEach((item) => doneList.append(row(item)));
         body.append(heading, doneList);
       }
+    }
+
+    if (pendingDelete) {
+      const bar = document.createElement("div");
+      bar.className = "todo-undo";
+      bar.setAttribute("role", "status");
+      const message = document.createElement("span");
+      message.textContent = translate(this._lang, "todoDeleted", { title: pendingDelete.item.summary });
+      const undo = document.createElement("button");
+      undo.type = "button";
+      undo.className = "btn";
+      undo.textContent = t("undo");
+      undo.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        this._undoTodoDelete();
+      });
+      bar.append(message, undo);
+      body.append(bar);
     }
 
     if (config.todo_add) {
@@ -2215,13 +2240,51 @@ export class PinboardCard extends HTMLElement {
     };
     cancel.addEventListener("click", close);
     save.addEventListener("click", () => void submit());
-    remove.addEventListener("click", () => {
-      void hass
-        .callService("todo", "remove_item", { entity_id: entity, item: [item.uid] })
-        .then(close)
-        .catch((err: unknown) => console.warn("Pinboard: could not delete the to-do item", err));
+    remove.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      close();
+      this._deleteTodoLater(entity, item);
     });
     title.focus();
+  }
+
+  private _rerenderTodo(): void {
+    if (!this._els || !this._slide.todo_entity || this._editing) return;
+    this._renderNote(this._currentFace, this._noteSource(this._slide));
+    this._updateScrollState(this._currentFace);
+  }
+
+  /** Hides the item at once and removes it after TODO_UNDO_MS unless "Undo" is pressed first. */
+  private _deleteTodoLater(entity: string, item: TodoItem): void {
+    this._commitTodoDelete();
+    const timer = window.setTimeout(() => this._commitTodoDelete(), TODO_UNDO_MS);
+    this._todoPendingDelete = { entity, item, timer };
+    this._rerenderTodo();
+  }
+
+  private _undoTodoDelete(): void {
+    const pending = this._todoPendingDelete;
+    if (!pending) return;
+    window.clearTimeout(pending.timer);
+    this._todoPendingDelete = undefined;
+    this._rerenderTodo();
+  }
+
+  private _commitTodoDelete(): void {
+    const pending = this._todoPendingDelete;
+    if (!pending) return;
+    window.clearTimeout(pending.timer);
+    this._todoPendingDelete = undefined;
+    const hass = this._hass;
+    if (hass) {
+      void hass
+        .callService("todo", "remove_item", { entity_id: pending.entity, item: [pending.item.uid] })
+        .catch((err: unknown) => {
+          console.warn("Pinboard: could not delete the to-do item", err);
+          this._rerenderTodo();
+        });
+    }
+    this._rerenderTodo();
   }
 
   private async _addTodoItem(entity: string, summary: string): Promise<void> {

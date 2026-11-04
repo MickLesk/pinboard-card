@@ -772,6 +772,23 @@ ha-card {
   background: rgba(127, 127, 127, 0.14);
   font-weight: normal;
 }
+.todo-undo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0;
+  padding: 4px 4px 4px 10px;
+  border-radius: 8px;
+  font-size: 0.9em;
+  background: rgba(127, 127, 127, 0.14);
+}
+.todo-undo span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .todo-desc {
   margin: -2px 0 6px 30px;
   font-size: 0.9em;

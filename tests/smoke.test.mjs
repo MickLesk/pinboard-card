@@ -650,7 +650,22 @@ test("to-do items show details and can be edited or deleted on the card", async 
   await cur().locator(".todo-item").first().hover();
   await cur().locator(".todo-item").first().locator(".todo-edit").click();
   await cur().locator(".todo-editor .btn").first().click(); // delete
-  await page.waitForFunction(() => !window.__todoItems.some((i) => i.summary === "Rye bread"));
+  // The item disappears at once but stays in the list until the undo window has passed.
+  assert.doesNotMatch(await cur().locator(".checklist").nth(0).innerText(), /Rye bread/);
+  assert.match(await cur().locator(".todo-undo").innerText(), /“Rye bread” deleted/);
+  assert.equal(await page.evaluate(() => window.__todoItems.some((i) => i.summary === "Rye bread")), true);
+  await cur().locator(".todo-undo .btn").click();
+  assert.equal(await cur().locator(".todo-undo").count(), 0);
+  assert.match(await cur().locator(".checklist").nth(0).innerText(), /Rye bread/);
+  await page.waitForTimeout(6500);
+  assert.equal(await page.evaluate(() => window.__todoItems.some((i) => i.summary === "Rye bread")), true, "undo keeps the item");
+
+  await cur().locator(".todo-item").first().hover();
+  await cur().locator(".todo-item").first().locator(".todo-edit").click();
+  await cur().locator(".todo-editor .btn").first().click(); // delete for good
+  await page.waitForFunction(() => !window.__todoItems.some((i) => i.summary === "Rye bread"), null, { timeout: 9000 });
+  await page.waitForTimeout(200);
+  assert.equal(await cur().locator(".todo-undo").count(), 0);
   await context.close();
 });
 

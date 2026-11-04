@@ -28,6 +28,8 @@ export const HISTORY_DAYS = 30;
 export const HISTORY_ROWS = 15;
 /** Recordings stop on their own after this many seconds. */
 export const MAX_RECORDING_SECONDS = 180;
+/** How long a deleted to-do item can be brought back before it is removed from the list. */
+export const TODO_UNDO_MS = 6000;
 
 export const MEDIA_SOURCE_PREFIX = "media-source://";
 /** How long a signed media-source URL is requested for, in seconds (24 h). */
