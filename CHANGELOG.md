@@ -5,6 +5,8 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-11-11
+
 ### Added
 
 - `starts` keeps a page hidden until a date ("2026-12-01") or a date and time
