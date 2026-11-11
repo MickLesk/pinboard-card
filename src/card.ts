@@ -16,18 +16,22 @@ import {
   TILE_MIN_WIDTH_PX,
   TODO_UNDO_MS,
   TODO_FEATURE_MOVE,
+  TODO_FEATURE_DELETE,
+  TODO_FEATURE_DUE_DATE,
+  TODO_FEATURE_DUE_DATETIME,
 } from "./const";
 import { GestureDetector, runAction, type ActionKind, type SwipeDirection } from "./actions";
 import { conditionsHold, normalizeConfig, parseAspectRatio, validateConfig } from "./config";
 import { resolveLanguage, translate } from "./i18n";
 import { CARD_STYLES } from "./styles";
-import { describeDue, formatRelativeTime, sortByDue } from "./time";
+import { describeDue, dueChange, dueFields, formatRelativeTime, sortByDue } from "./time";
 import { buildToolbar } from "./markdown-toolbar";
 import { UploadError, preferredAudioType, uploadAudio, uploadPicture } from "./upload";
 import {
   hasChecklist,
   hasTemplate,
   isExpired,
+  hasStarted,
   parseExpiry,
   parseNoteBlocks,
   resolveNoteColor,
@@ -40,6 +44,7 @@ import type {
   HassEntity,
   HomeAssistant,
   LogbookEntry,
+  PageConfig,
   PinboardCardConfig,
   NormalizedConfig,
   ResolvedMedia,
@@ -292,7 +297,7 @@ export class PinboardCard extends HTMLElement {
   private _todoUnsub?: Promise<() => Promise<void>>;
   private _todoBusy = new Set<string>();
   /** A deleted to-do item waits a few seconds before it is removed, so it can be undone. */
-  private _todoPendingDelete?: { entity: string; item: TodoItem; timer: number };
+  private _todoPendingDelete?: { entity: string; items: TodoItem[]; timer: number };
   /** While an item is dragged, list updates wait so the rows under the finger stay put. */
   private _todoDragging = false;
   private _todoDeferred = false;
@@ -477,7 +482,7 @@ export class PinboardCard extends HTMLElement {
     return this._slide;
   }
 
-  /** The slides currently shown: expired ones drop out when expired_slides is "hide". */
+  /** The slides currently shown: pages before their `starts` drop out, expired ones when expired_slides is "hide". */
   private _slides(): Slide[] {
     return this._visible;
   }
@@ -490,6 +495,7 @@ export class PinboardCard extends HTMLElement {
     const visible = config.slides.filter(
       (slide) =>
         !(config.expired_slides === "hide" && slide.expires && isExpired(slide.expires, now)) &&
+        hasStarted(slide.starts, now) &&
         conditionsHold(slide.visible, states),
     );
     // Never hide everything: an all-expired card still shows its first slide.
@@ -555,31 +561,19 @@ export class PinboardCard extends HTMLElement {
       grid.classList.add("fixed-columns");
       grid.style.setProperty("--pinboard-columns", String(config.columns));
     }
-    const shared: Partial<PinboardCardConfig> = { ...raw };
-    for (const key of ["slides", "images", "image", "image_entity", "note", "note_entity", "note_attribute", "todo_entity", "audio", "audio_entity", "expires", "color", "markers", "visible", "title", "layout", "columns"] as const) {
+    // Page options belong to the entries; only card options are shared by every tile.
+    const shared: Record<string, unknown> = { ...raw };
+    for (const key of ["slides", "images", "layout", "columns", ...Object.keys(config.entries[0] ?? {})]) {
       delete shared[key];
     }
     this._tiles = config.entries.map((entry) => {
       const tile = document.createElement(CARD_TYPE) as PinboardCard;
+      const page: PageConfig = entry;
       tile.setConfig({
-        ...shared,
+        ...(shared as Partial<PinboardCardConfig>),
+        ...page,
         type: raw.type,
         layout: "stack",
-        title: entry.title,
-        image: entry.image,
-        image_entity: entry.image_entity,
-        note: entry.note,
-        note_entity: entry.note_entity,
-        note_attribute: entry.note_attribute,
-        audio: entry.audio,
-        audio_entity: entry.audio_entity,
-        expires: entry.expires,
-        color: entry.color,
-        markers: entry.markers,
-        visible: entry.visible,
-        tap_action: entry.tap_action,
-        hold_action: entry.hold_action,
-        double_tap_action: entry.double_tap_action,
       });
       if (this._hass) tile.hass = this._hass;
       grid.append(tile);
@@ -1985,14 +1979,14 @@ export class PinboardCard extends HTMLElement {
     if (!config || !hass) return;
     const t = (key: string) => translate(this._lang, key);
     const pendingDelete = this._todoPendingDelete?.entity === source.todo ? this._todoPendingDelete : undefined;
-    const items = (this._todoEntity === source.todo ? this._todoItems : []).filter(
-      (item) => item.uid !== pendingDelete?.item.uid,
-    );
+    const removed = new Set(pendingDelete?.items.map((item) => item.uid));
+    const items = (this._todoEntity === source.todo ? this._todoItems : []).filter((item) => !removed.has(item.uid));
     const pending = items.filter((item) => item.status !== "completed");
     const open = config.todo_sort === "due" ? sortByDue(pending) : pending;
     // Dragging follows the list's own order, so it is offered only when that order is shown.
     const features = Number(hass.states[source.todo]?.attributes.supported_features ?? 0);
     const canMove = config.todo_sort !== "due" && (features & TODO_FEATURE_MOVE) !== 0 && pending.length > 1;
+    const canDelete = (features & TODO_FEATURE_DELETE) !== 0;
     const done = items.filter((item) => item.status === "completed");
 
     const row = (item: TodoItem) => {
@@ -2054,7 +2048,7 @@ export class PinboardCard extends HTMLElement {
       }
       edit.addEventListener("click", (ev) => {
         ev.stopPropagation();
-        this._openTodoEditor(holder, source.todo, item);
+        this._openTodoEditor(holder, source.todo, item, features);
       });
       return holder;
     };
@@ -2076,7 +2070,22 @@ export class PinboardCard extends HTMLElement {
       if (done.length && config.todo_show_completed) {
         const heading = document.createElement("div");
         heading.className = "todo-section";
-        heading.textContent = `${t("todoDone")} · ${done.length}`;
+        const headingText = document.createElement("span");
+        headingText.textContent = `${t("todoDone")} · ${done.length}`;
+        heading.append(headingText);
+        if (canDelete) {
+          const clear = document.createElement("button");
+          clear.type = "button";
+          clear.className = "todo-clear";
+          clear.textContent = t("todoClear");
+          clear.title = t("todoClearHelp");
+          clear.setAttribute("aria-label", t("todoClearHelp"));
+          clear.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            this._deleteTodoLater(source.todo, done);
+          });
+          heading.append(clear);
+        }
         const doneList = document.createElement("div");
         doneList.className = "checklist";
         done.forEach((item) => doneList.append(row(item)));
@@ -2089,7 +2098,10 @@ export class PinboardCard extends HTMLElement {
       bar.className = "todo-undo";
       bar.setAttribute("role", "status");
       const message = document.createElement("span");
-      message.textContent = translate(this._lang, "todoDeleted", { title: pendingDelete.item.summary });
+      message.textContent =
+        pendingDelete.items.length === 1
+          ? translate(this._lang, "todoDeleted", { title: pendingDelete.items[0].summary })
+          : translate(this._lang, "todoCleared", { count: String(pendingDelete.items.length) });
       const undo = document.createElement("button");
       undo.type = "button";
       undo.className = "btn";
@@ -2202,8 +2214,8 @@ export class PinboardCard extends HTMLElement {
     }
   }
 
-  /** Inline form for a to-do item: title and details, so a list can hold long notes. */
-  private _openTodoEditor(holder: HTMLElement, entity: string, item: TodoItem): void {
+  /** Inline form for a to-do item: title, details and, where the list stores one, the due date. */
+  private _openTodoEditor(holder: HTMLElement, entity: string, item: TodoItem, features: number): void {
     const hass = this._hass;
     if (!hass || holder.querySelector(".todo-editor")) return;
     const t = (key: string) => translate(this._lang, key);
@@ -2219,6 +2231,25 @@ export class PinboardCard extends HTMLElement {
     details.value = item.description ?? "";
     details.placeholder = t("todoDetails");
     const toolbar = buildToolbar(details, t);
+    const withDate = (features & (TODO_FEATURE_DUE_DATE | TODO_FEATURE_DUE_DATETIME)) !== 0;
+    const withTime = (features & TODO_FEATURE_DUE_DATETIME) !== 0;
+    const original = dueFields(item.due);
+    const dueRow = document.createElement("div");
+    dueRow.className = "todo-due-fields";
+    const dueDate = document.createElement("input");
+    dueDate.type = "date";
+    dueDate.value = original.date;
+    dueDate.setAttribute("aria-label", t("todoDue"));
+    const dueTime = document.createElement("input");
+    dueTime.type = "time";
+    dueTime.value = original.time;
+    dueTime.setAttribute("aria-label", t("todoDueTime"));
+    if (withDate) {
+      const dueLabel = document.createElement("span");
+      dueLabel.textContent = t("todoDue");
+      dueRow.append(dueLabel, dueDate);
+      if (withTime) dueRow.append(dueTime);
+    }
     const actions = document.createElement("div");
     actions.className = "actions";
     const remove = document.createElement("button");
@@ -2236,9 +2267,11 @@ export class PinboardCard extends HTMLElement {
     save.className = "btn primary";
     save.textContent = t("save");
     actions.append(remove, spacer, cancel, save);
-    form.append(title, toolbar, details, actions);
+    form.append(title, toolbar, details);
+    if (withDate) form.append(dueRow);
+    form.append(actions);
     holder.append(form);
-    for (const el of [title, details] as Array<HTMLInputElement | HTMLTextAreaElement>) {
+    for (const el of [title, details, dueDate, dueTime] as Array<HTMLInputElement | HTMLTextAreaElement>) {
       el.addEventListener("keydown", (event: Event) => {
         const ev = event as KeyboardEvent;
         ev.stopPropagation();
@@ -2262,6 +2295,7 @@ export class PinboardCard extends HTMLElement {
         const data: Record<string, unknown> = { entity_id: entity, item: item.uid };
         if (summary !== item.summary) data.rename = summary;
         if (description !== (item.description ?? "")) data.description = description;
+        if (withDate) Object.assign(data, dueChange(original, dueDate.value, withTime ? dueTime.value : "", (features & TODO_FEATURE_DUE_DATE) !== 0));
         if (Object.keys(data).length > 2) await hass.callService("todo", "update_item", data);
         close();
       } catch (err) {
@@ -2376,11 +2410,13 @@ export class PinboardCard extends HTMLElement {
     this._updateScrollState(this._currentFace);
   }
 
-  /** Hides the item at once and removes it after TODO_UNDO_MS unless "Undo" is pressed first. */
-  private _deleteTodoLater(entity: string, item: TodoItem): void {
+  /** Hides the items at once and removes them after TODO_UNDO_MS unless "Undo" is pressed first. */
+  private _deleteTodoLater(entity: string, item: TodoItem | TodoItem[]): void {
     this._commitTodoDelete();
+    const items = Array.isArray(item) ? [...item] : [item];
+    if (!items.length) return;
     const timer = window.setTimeout(() => this._commitTodoDelete(), TODO_UNDO_MS);
-    this._todoPendingDelete = { entity, item, timer };
+    this._todoPendingDelete = { entity, items, timer };
     this._rerenderTodo();
   }
 
@@ -2400,7 +2436,7 @@ export class PinboardCard extends HTMLElement {
     const hass = this._hass;
     if (hass) {
       void hass
-        .callService("todo", "remove_item", { entity_id: pending.entity, item: [pending.item.uid] })
+        .callService("todo", "remove_item", { entity_id: pending.entity, item: pending.items.map((item) => item.uid) })
         .catch((err: unknown) => {
           console.warn("Pinboard: could not delete the to-do item", err);
           this._rerenderTodo();

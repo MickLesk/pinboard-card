@@ -855,6 +855,22 @@ ha-card {
 .todo-editor textarea:focus {
   border-color: var(--primary-color);
 }
+.todo-editor .todo-due-fields {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9em;
+  color: var(--secondary-text-color);
+}
+.todo-editor .todo-due-fields input {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+  color: var(--primary-text-color);
+}
+.todo-editor .todo-due-fields input[type="time"] {
+  flex: 0 1 7.5em;
+}
 .todo-editor .actions {
   display: flex;
   gap: 8px;
@@ -957,12 +973,34 @@ ha-card {
   color: var(--primary-color);
 }
 .todo-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin: 8px 0 2px;
   font-size: 0.75em;
   font-weight: 600;
   letter-spacing: 0.05em;
   text-transform: uppercase;
   color: var(--secondary-text-color);
+}
+.todo-clear {
+  padding: 2px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--primary-color);
+  cursor: pointer;
+}
+.todo-clear:hover {
+  background: rgba(127, 127, 127, 0.14);
+}
+.todo-clear:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 1px;
 }
 .note-body .note-empty small {
   display: block;

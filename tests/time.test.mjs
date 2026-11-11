@@ -10,7 +10,7 @@ const bundled = await build({
   write: false,
   platform: "neutral",
 });
-const { describeDue, parseDue, sortByDue } = await import(
+const { describeDue, dueChange, dueFields, parseDue, sortByDue } = await import(
   `data:text/javascript;base64,${Buffer.from(bundled.outputFiles[0].text).toString("base64")}`
 );
 
@@ -54,4 +54,20 @@ test("sorting by due date puts the earliest first and undated items last, in the
     { uid: "e", due: new Date(2026, 10, 5, 8).toISOString() },
   ];
   assert.deepEqual(sortByDue(items).map((i) => i.uid), ["d", "e", "b", "a", "c"]);
+});
+
+test("due fields read back a date and a time, and only changes are sent", () => {
+  assert.deepEqual(dueFields(undefined), { date: "", time: "" });
+  assert.deepEqual(dueFields("2026-11-07"), { date: "2026-11-07", time: "" });
+  assert.deepEqual(dueFields(new Date(2026, 10, 7, 18, 5).toISOString()), { date: "2026-11-07", time: "18:05" });
+
+  const day = { date: "2026-11-07", time: "" };
+  assert.deepEqual(dueChange(day, "2026-11-07", "", true), {});
+  assert.deepEqual(dueChange(day, "2026-11-09", "", true), { due_date: "2026-11-09" });
+  assert.deepEqual(dueChange(day, "2026-11-09", "07:30", true), { due_datetime: "2026-11-09 07:30:00" });
+  assert.deepEqual(dueChange(day, "", "", true), { due_date: null });
+  assert.deepEqual(dueChange(day, "", "", false), { due_datetime: null });
+  assert.deepEqual(dueChange({ date: "", time: "" }, "", "", true), {});
+  // A list that only stores date and time gets midnight for a bare day.
+  assert.deepEqual(dueChange({ date: "", time: "" }, "2026-11-09", "", false), { due_datetime: "2026-11-09 00:00:00" });
 });

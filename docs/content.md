@@ -77,9 +77,10 @@ note: "Before the weekend:"
 The page shows the open items as checkboxes, the completed ones struck
 through below (`todo_show_completed`), and an input row for new items
 (`todo_add`). Every item can carry details: the pencil next to an item opens
-title and details for editing (with the formatting buttons) and offers
-deletion. A deleted item disappears at once and an "Undo" button shows for
-six seconds; only then is it removed from the list. Details are shown under the item, so a to-do list doubles as a stack
+title, details and due date for editing (with the formatting buttons) and
+offers deletion. A deleted item disappears at once and an "Undo" button shows for
+six seconds; only then is it removed from the list. "Clear" next to the
+completed items removes all of them the same way, with the same undo. Details are shown under the item, so a to-do list doubles as a stack
 of longer notes without the 255-character limit of `input_text`. Ticks call `todo.update_item`, new items `todo.add_item`, so the
 list stays the same on every device, in Home Assistant's To-do view and for
 automations. The list's name is used as the page title when the page has
@@ -88,7 +89,10 @@ none; `note` is shown as text above the list.
 Items with a due date show it next to the title: "Today", "Tomorrow" or a
 short date, with the time for items due at a time. Overdue items are marked
 in red. `todo_sort: due` lists the open items by due date, earliest first;
-items without one follow in the list's own order.
+items without one follow in the list's own order. The item editor sets or
+clears the due date for lists that store one (Local To-do and others); a
+time field is offered when the list also stores times. Lists that cannot
+delete items show no "Clear" button.
 
 Lists that keep their own order (Local To-do and most other integrations)
 show a handle in front of every open item. Drag it with the mouse or a
@@ -124,10 +128,18 @@ Oct"; afterwards the page is dimmed and tagged "Expired", or removed from the
 sequence with `expired_slides: hide`. A bare date expires at the end of that
 day, local time.
 
+`starts` is the other end: the page stays out of the sequence until that
+date, so an advent calendar, a holiday note or next week's menu can be
+prepared ahead. A bare date starts at the beginning of that day. A card
+whose pages have all not started yet still shows its first page.
+
 ```yaml
 slides:
   - note: Parcel at the neighbour's.
     expires: "2026-10-01"
+  - note: "**Packing list** for the holidays"
+    starts: "2026-12-18"
+    expires: "2026-12-23"
 ```
 
 ### Colours and sticky notes

@@ -282,6 +282,13 @@
           if (item && data.description !== undefined) item.description = data.description;
           notifyTodo();
         }
+        if (domain === "todo" && service === "update_item" && ("due_date" in data || "due_datetime" in data)) {
+          window.__todoCalls = [...(window.__todoCalls ?? []), data];
+          const item = todoItems.find((i) => i.uid === data.item);
+          const due = data.due_date ?? (data.due_datetime ? data.due_datetime.replace(" ", "T") : null);
+          if (item) { if (due) item.due = due; else delete item.due; }
+          notifyTodo();
+        }
         if (domain === "todo" && service === "remove_item") {
           for (const uid of data.item) { const i = todoItems.findIndex((x) => x.uid === uid); if (i >= 0) todoItems.splice(i, 1); }
           notifyTodo();

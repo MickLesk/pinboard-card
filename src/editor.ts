@@ -39,7 +39,7 @@ const UPLOAD_TARGETS = ["image", "media"];
 const EDITOR_DEFAULTS: Record<string, unknown> = {};
 const PAGE_KEYS: Array<keyof PageConfig> = [
   "kind", "title", "image", "image_entity", "note", "note_entity", "note_attribute", "todo_entity",
-  "expires", "color", "text_color", "qr", "qr_entity", "markers", "audio", "audio_entity", "visible", "tap_action", "hold_action", "double_tap_action",
+  "expires", "starts", "color", "text_color", "qr", "qr_entity", "markers", "audio", "audio_entity", "visible", "tap_action", "hold_action", "double_tap_action",
 ];
 type EntryKind = "image" | "note" | "audio" | "both";
 type TemplateKind = "shopping" | "family" | "maintenance";
@@ -1423,7 +1423,8 @@ export class PinboardCardEditor extends HTMLElement {
       );
     }
     schema.push(
-      section("display", "mdi:palette-outline", Boolean(page.expires || page.color), [
+      section("display", "mdi:palette-outline", Boolean(page.expires || page.starts || page.color), [
+        { name: "starts", selector: { date: {} } },
         { name: "expires", selector: { date: {} } },
         {
           name: "display_grid",
@@ -1586,6 +1587,7 @@ export class PinboardCardEditor extends HTMLElement {
       note_attribute: page.note_attribute ?? "",
       todo_entity: page.todo_entity ?? "",
       expires: page.expires ?? "",
+      starts: page.starts ?? "",
       color: page.color ?? "",
       text_color: page.text_color ?? "",
       audio: typeof page.audio === "object" && page.audio !== null ? page.audio.media_content_id : page.audio ?? "",

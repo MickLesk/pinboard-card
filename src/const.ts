@@ -30,8 +30,12 @@ export const HISTORY_ROWS = 15;
 export const MAX_RECORDING_SECONDS = 180;
 /** How long a deleted to-do item can be brought back before it is removed from the list. */
 export const TODO_UNDO_MS = 6000;
-/** TodoListEntityFeature.MOVE_TODO_ITEM: the list can store a custom order. */
+/** TodoListEntityFeature flags: what a list lets the card change. */
+export const TODO_FEATURE_DELETE = 2;
+/** MOVE_TODO_ITEM: the list can store a custom order. */
 export const TODO_FEATURE_MOVE = 8;
+export const TODO_FEATURE_DUE_DATE = 16;
+export const TODO_FEATURE_DUE_DATETIME = 32;
 
 export const MEDIA_SOURCE_PREFIX = "media-source://";
 /** How long a signed media-source URL is requested for, in seconds (24 h). */

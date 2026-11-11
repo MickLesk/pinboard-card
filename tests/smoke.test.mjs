@@ -641,7 +641,7 @@ test("to-do items show details and can be edited or deleted on the card", async 
   const item = cur().locator(".todo-item").first(); // Bread
   await item.hover();
   await item.locator(".todo-edit").click();
-  await cur().locator(".todo-editor input").fill("Rye bread");
+  await cur().locator('.todo-editor input[type="text"]').fill("Rye bread");
   await cur().locator(".todo-editor textarea").fill("From the bakery, not the supermarket.");
   await cur().locator(".todo-editor .btn.primary").click();
   await page.waitForFunction(() => window.__todoItems.some((i) => i.summary === "Rye bread" && i.description.includes("bakery")));
@@ -666,6 +666,95 @@ test("to-do items show details and can be edited or deleted on the card", async 
   await page.waitForFunction(() => !window.__todoItems.some((i) => i.summary === "Rye bread"), null, { timeout: 9000 });
   await page.waitForTimeout(200);
   assert.equal(await cur().locator(".todo-undo").count(), 0);
+  await context.close();
+});
+
+test("completed to-do items are cleared together, with undo", async () => {
+  const { page, context } = await openDemo();
+  const todo = card(page, 12);
+  await todo.scrollIntoViewIfNeeded();
+  const cur = () => todo.locator(".face.current");
+  assert.match(await cur().locator(".todo-section").innerText(), /Done · 1/i);
+  await cur().locator(".todo-clear").click();
+  assert.equal(await cur().locator(".todo-section").count(), 0);
+  assert.match(await cur().locator(".todo-undo").innerText(), /“Milk” deleted/);
+  await cur().locator(".todo-undo .btn").click();
+  assert.match(await cur().locator(".todo-section").innerText(), /Done · 1/i);
+
+  // Tick a second item so the bar counts them, then let the undo window pass.
+  await cur().locator(".todo-item").first().locator("input").check();
+  await page.waitForFunction(() => window.__todoItems.filter((i) => i.status === "completed").length === 2);
+  await page.waitForTimeout(200);
+  await cur().locator(".todo-clear").click();
+  assert.match(await cur().locator(".todo-undo").innerText(), /2 completed items removed/);
+  assert.equal(await page.evaluate(() => window.__todoItems.length), 3);
+  await page.waitForFunction(() => window.__todoItems.every((i) => i.status !== "completed"), null, { timeout: 9000 });
+  assert.equal(await page.evaluate(() => window.__todoItems.map((i) => i.summary).join()), "Coffee beans");
+  await context.close();
+});
+
+test("the due date of a to-do item is set and cleared in its editor", async () => {
+  const { page, context } = await openDemo();
+  const todo = card(page, 12);
+  await todo.scrollIntoViewIfNeeded();
+  const cur = () => todo.locator(".face.current");
+  const coffee = cur().locator(".todo-item").nth(1);
+  await coffee.hover();
+  await coffee.locator(".todo-edit").click();
+  const fields = cur().locator(".todo-editor .todo-due-fields");
+  // The demo list stores dates but not times.
+  assert.equal(await fields.locator('input[type="time"]').count(), 0);
+  await fields.locator('input[type="date"]').fill("2030-03-14");
+  await cur().locator(".todo-editor .btn.primary").click();
+  await page.waitForFunction(() => window.__todoItems.find((i) => i.uid === "c3").due === "2030-03-14");
+  assert.deepEqual(await page.evaluate(() => window.__todoCalls.at(-1)), { entity_id: "todo.shopping", item: "c3", due_date: "2030-03-14" });
+  await page.waitForTimeout(200);
+  assert.match(await cur().locator(".todo-item").nth(1).innerText(), /2030/);
+
+  await cur().locator(".todo-item").nth(1).hover();
+  await cur().locator(".todo-item").nth(1).locator(".todo-edit").click();
+  assert.equal(await cur().locator('.todo-editor input[type="date"]').inputValue(), "2030-03-14");
+  await cur().locator('.todo-editor input[type="date"]').fill("");
+  await cur().locator(".todo-editor .btn.primary").click();
+  await page.waitForFunction(() => !("due" in window.__todoItems.find((i) => i.uid === "c3")));
+  assert.equal(await page.evaluate(() => window.__todoCalls.at(-1).due_date), null);
+  await context.close();
+});
+
+test("pages wait for their start date, and tiles keep every page option", async () => {
+  const { page, context } = await openDemo();
+  const dots = await page.evaluate(() => {
+    const el = document.createElement("pinboard-card");
+    el.setConfig({ type: "custom:pinboard-card", slides: [{ note: "a" }, { note: "later", starts: "2099-01-01" }, { note: "c" }, { note: "now", starts: "2020-01-01 07:00" }] });
+    document.body.append(el);
+    const count = el.shadowRoot.querySelectorAll(".dots button").length;
+    el.remove();
+    return count;
+  });
+  assert.equal(dots, 3);
+
+  const tiles = await page.evaluate(async () => {
+    const el = document.createElement("pinboard-card");
+    el.setConfig({ type: "custom:pinboard-card", layout: "grid", text_color: "dark", slides: [
+      { todo_entity: "todo.shopping" },
+      { qr: "hello", text_color: "light" },
+      { kind: "note" },
+    ] });
+    el.hass = document.querySelector("#grid pinboard-card").hass;
+    document.body.append(el);
+    await new Promise((r) => setTimeout(r, 300));
+    const inner = [...el.shadowRoot.querySelectorAll("pinboard-card")];
+    const result = {
+      count: inner.length,
+      todo: inner[0].shadowRoot.querySelectorAll(".todo-item").length,
+      qr: inner[1].shadowRoot.querySelectorAll(".qr svg").length,
+      textColor: inner[1].shadowRoot.querySelector(".face.current").classList.contains("custom-text"),
+      emptyNote: inner[2].shadowRoot.querySelector(".stage").getAttribute("aria-pressed"),
+    };
+    el.remove();
+    return result;
+  });
+  assert.deepEqual(tiles, { count: 3, todo: 3, qr: 1, textColor: true, emptyNote: "true" });
   await context.close();
 });
 
