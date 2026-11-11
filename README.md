@@ -50,15 +50,16 @@ can hold up to ten pictures, notes and recordings in any order.
 - **Notes in Markdown** — bold, lists, links, plus **templates** such as
   `{{ states('sensor.boiler') }}` that follow state changes.
 - **To-do lists as pages** — a `todo.*` list becomes a checklist you tick,
-  extend and reorder on the card, with due dates and undo for deletions.
+  extend and reorder on the card, with due dates you can set, one tap to
+  clear completed items and undo for deletions.
   Items carry details, so a list also works as a stack of longer notes. Home Assistant keeps the list, so every device, the To-do view
   and automations see the same state.
 - **History** — notes from entities show their last changes with time and
   person, straight from Home Assistant's logbook.
 - **No Markdown required** — the editor's note box has buttons for bold,
   italic, heading, list, checklist and link, and a live preview.
-- **Notes with a shelf life and a colour** — `expires` dims or hides a note
-  after a date, `color` tints the page, and the sticky-note look makes notes
+- **Notes with a shelf life and a colour** — `starts` shows a page from a
+  date, `expires` dims or hides a note after one, `color` tints the page, and the sticky-note look makes notes
   read like a note on the fridge.
 - **Edit the note on the card** — link an `input_text` or `text` entity and a
   pencil appears on the note side. Changes are saved with `set_value`, so
@@ -236,6 +237,7 @@ slides:
                                              # presets get a darker shade in dark themes
     text_color: auto                         # auto (contrast to the page colour), light, dark or any CSS colour
     expires: "2026-10-01 18:00"              # afterwards dimmed and tagged, or hidden (expired_slides)
+    starts: "2026-09-28"                     # hidden until this day (or "2026-09-28 07:00")
   - qr: "WIFI:T:WPA;S:Guest;P:secret;;"      # a QR code above the note text: Wi-Fi, a link or any text
     note: "Guest Wi-Fi"
   - qr_entity: input_text.share_link         # QR content from an entity's state
@@ -319,7 +321,7 @@ double_tap_action:
 | `type` | – | `custom:pinboard-card`. Required. |
 | `title` | – | Shown on pictures and above notes. Pages without their own `title` use it. |
 | `slides` | – | Pictures, notes and recordings in order, at most ten pages. See [Page](#page). `images` is accepted as an older name. |
-| `image`, `image_entity`, `note`, `note_entity`, `note_attribute`, `audio`, `audio_entity`, `expires`, `color`, `markers`, `kind` | – | The single-entry form: the same keys as one `slides` entry, placed on the card. Ignored when `slides` is set. |
+| `image`, `image_entity`, `note`, `note_entity`, `note_attribute`, `audio`, `audio_entity`, `expires`, `starts`, `color`, `markers`, `kind` | – | The single-entry form: the same keys as one `slides` entry, placed on the card. Ignored when `slides` is set. |
 | `layout` | `stack` | `stack` shows one page after another, `grid` shows the entries side by side as tiles that each turn on their own. |
 | `columns` | `0` | With `layout: grid`: tiles per row. `0` fits as many as the width allows (about 150 px each). |
 | `aspect_ratio` | `16:9` | `16:9`, `4:3`, `3:2`, `1:1`, `3:4`, `9:16`, any `w:h`, or `auto` for the picture's natural size. In sections view the card fills its rows instead. |
@@ -374,6 +376,7 @@ string is treated as `image`.
 | `audio` | – | URL or `media-source://` id of an audio file. |
 | `audio_entity` | – | Audio from an `input_text` / `text` entity whose state is the audio address. Gets a record button. |
 | `expires` | – | `2026-10-01` or `2026-10-01 18:00`. Until then the footer shows "Until …"; afterwards the page is dimmed or hidden. |
+| `starts` | – | `2026-12-01` or `2026-12-01 07:00`. The page stays hidden until then; a bare date starts at the beginning of that day. |
 | `color` | – | Tint of a note page: `yellow`, `green`, `blue`, `pink`, `orange`, `purple`, `grey` or any CSS colour. Presets switch to a darker shade while Home Assistant uses a dark theme. |
 | `text_color` | `auto` | Text on a note page: `auto` picks dark or light for contrast with `color`, `light` and `dark` force it, any CSS colour works too. |
 | `qr` | – | Draws a QR code on the note page above the text: a link, a Wi-Fi string (`WIFI:T:WPA;S:name;P:password;;`) or any text. An entry with only `qr` is a QR page. |

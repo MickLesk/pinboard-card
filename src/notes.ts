@@ -77,6 +77,21 @@ export function isExpired(value: string, now = new Date()): boolean {
   return date !== null && date.getTime() < now.getTime();
 }
 
+/** Like parseExpiry, but a bare date starts at the beginning of that day. */
+export function parseStart(value: string): Date | null {
+  const text = value.trim();
+  if (!text) return null;
+  const dateOnly = /^(\d{4})-(\d{2})-(\d{2})$/.exec(text);
+  if (dateOnly) return new Date(Number(dateOnly[1]), Number(dateOnly[2]) - 1, Number(dateOnly[3]));
+  return parseExpiry(text);
+}
+
+/** False while a page's `starts` lies in the future; an unreadable value never holds a page back. */
+export function hasStarted(value: string, now = new Date()): boolean {
+  const date = parseStart(value);
+  return date === null || date.getTime() <= now.getTime();
+}
+
 /** Tints for note pages. Names map to gentle paper colours; any CSS colour works too. */
 /** Light and dark variants of the colour presets; the dark one is used while Home Assistant runs a dark theme. */
 export const NOTE_COLOR_PRESETS: Record<string, { light: string; dark: string }> = {

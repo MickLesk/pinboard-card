@@ -78,6 +78,8 @@ export interface PageConfig {
   todo_entity?: string;
   /** "2026-10-01" or "2026-10-01 18:00": after this the slide is dimmed or hidden. */
   expires?: string;
+  /** "2026-12-01" or "2026-12-01 07:00": the page stays hidden until then. */
+  starts?: string;
   /** Tint of a note page: a preset name (yellow, green, …) or any CSS colour. */
   color?: string;
   /** Text on a note page: auto (contrast to the tint), light, dark or any CSS colour. */
@@ -109,6 +111,7 @@ export interface NormalizedPage {
   note_attribute: string;
   todo_entity: string;
   expires: string;
+  starts: string;
   color: string;
   text_color: string;
   qr: string;

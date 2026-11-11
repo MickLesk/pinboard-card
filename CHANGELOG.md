@@ -5,6 +5,23 @@ All notable changes to Pinboard are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- `starts` keeps a page hidden until a date ("2026-12-01") or a date and time
+  ("2026-12-01 07:00"), the counterpart to `expires`. The editor offers it as
+  "Show from" under the page's display options.
+- "Clear" next to the completed to-do items removes all of them at once, with
+  the same six-second undo as a single deletion. It is shown for lists that
+  can delete items.
+- The to-do item editor sets and clears the due date, with a time field for
+  lists that store times.
+
+### Fixed
+
+- Tiles (`layout: grid`) now show to-do lists, QR codes, text colours and
+  empty notes of their entries; before, these entry options were dropped, and
+  a card-level `text_color` or `qr` leaked into every tile.
+
 ## [1.4.0] - 2026-11-04
 
 ### Added
@@ -26,9 +43,6 @@ All notable changes to Pinboard are documented here. The format follows
 
 - A to-do item whose details or due date changed elsewhere is now redrawn;
   before, only changes to its title or status reached the card.
-
-### Fixed
-
 - `auto_advance` and `auto_flip` no longer turn the page while a voice memo
   plays or records, while the history panel is open or while the card is
   enlarged. Before, a memo stopped mid-playback at the next tick.

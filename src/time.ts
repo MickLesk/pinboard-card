@@ -79,3 +79,35 @@ export function sortByDue<T extends { due?: string }>(items: T[]): T[] {
     .sort((a, b) => a.at - b.at || a.index - b.index)
     .map(({ item }) => item);
 }
+
+const pad = (value: number) => String(value).padStart(2, "0");
+
+/** A to-do item's due date as the values of a date and a time field (local time; no time for all-day items). */
+export function dueFields(value: string | undefined): { date: string; time: string } {
+  const due = parseDue(value);
+  if (!due) return { date: "", time: "" };
+  const { date, allDay } = due;
+  return {
+    date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+    time: allDay ? "" : `${pad(date.getHours())}:${pad(date.getMinutes())}`,
+  };
+}
+
+/**
+ * The todo.update_item fields for a changed due date: `due_date` for a day, `due_datetime` with a time,
+ * null to clear it. `byDate` says whether the list takes a bare date; without it a day starts at midnight.
+ */
+export function dueChange(
+  original: { date: string; time: string },
+  date: string,
+  time: string,
+  byDate: boolean,
+): Record<string, string | null> {
+  if (date === original.date && time === original.time) return {};
+  if (!date) {
+    if (!original.date) return {};
+    return byDate ? { due_date: null } : { due_datetime: null };
+  }
+  if (!time && byDate) return { due_date: date };
+  return { due_datetime: `${date} ${time || "00:00"}:00` };
+}
